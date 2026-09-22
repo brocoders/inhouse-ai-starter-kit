@@ -1,0 +1,146 @@
+# The whole application: the app, its database, and the web server that holds
+# the certificate. Three containers on one rented machine.
+#
+# Used in two places, which is why a few values come from the environment:
+#
+#   on a laptop   docker compose up --build
+#   on the server docker compose -f releases/<sha>/compose.yaml \
+#                   --project-directory /opt/<app> \
+#                   --env-file /opt/<app>/.env --env-file /opt/<app>/.release.env ...
+#
+# Two --env-file flags, not one: passing --env-file replaces the .env Compose
+# would otherwise read by itself, so the file holding POSTGRES_PASSWORD has to
+# be named again beside the one holding APP_RELEASE.
+#
+# Relative paths below resolve against the project directory (/opt/<app> on the
+# server), not against this file. That is deliberate for ./Caddyfile — it must
+# be the same file across releases so Caddy is never restarted by a release —
+# and it is why the build context is $APP_SOURCE instead of ".": the source of
+# the release being built lives in releases/<sha>, not in the project directory.
+
+name: ${APP_NAME:-inhouse}
+
+services:
+  app:
+    build:
+      context: ${APP_SOURCE:-.}
+      args:
+        APP_RELEASE: ${APP_RELEASE:-dev}
+    image: ${APP_IMAGE:-inhouse-app}:${APP_RELEASE:-dev}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATA_DIR: /data
+      APP_RELEASE: ${APP_RELEASE:-dev}
+      # Assembled here rather than stored in .env so there is one place holding
+      # the password and one spelling of the database's address.
+      DATABASE_URL: postgres://app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is missing; it belongs in .env}@db:5432/app
+    volumes:
+      - appdata:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    # node -e, not wget or curl: node:24-slim has neither, and installing one
+    # only so the health check can run adds a package to the attack surface for
+    # the sake of a line that Node already does natively.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    # Enforced by `docker compose up` on a plain Docker engine — no Swarm
+    # involved. A runaway query or a leak then starves this container instead of
+    # the machine, and the database and the web server keep answering.
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+    # Unbounded container logs are how a disk reaches 92% full without anyone
+    # doing anything wrong. 30 MB per container is plenty for a week.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_DB: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is missing; it belongs in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No `ports:`. A published port is opened by Docker in the NAT table, below
+    # ufw's rules, so `ufw deny incoming` would not stop it — the database would
+    # be on the public internet with a password as its only defence. The app
+    # reaches it over the private compose network; a person reaches it through
+    # an SSH tunnel.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U app -d app']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is missing; it belongs in .env}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      # Same path in every release, so a release never restarts the web server
+      # and never interrupts a certificate renewal in flight.
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificates and their account key. Losing this volume means asking
+      # Let's Encrypt for everything again, which is rate-limited.
+      - caddy_data:/data
+      - caddy_config:/config
+    # service_started, not service_healthy: Caddy has to be listening even while
+    # the app container is down, otherwise a failed release turns into a browser
+    # error about the connection instead of the app's own retry window.
+    depends_on:
+      app:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+volumes:
+  # The database. This is the one that matters; see docs/backups.md.
+  pgdata:
+  # Uploaded attachments and anything else the app writes to DATA_DIR.
+  appdata:
+  caddy_data:
+  caddy_config:

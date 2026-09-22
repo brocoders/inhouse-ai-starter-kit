@@ -1,0 +1,55 @@
+# The web server in front of the app. Its whole job: hold the HTTPS certificate,
+# renew it without being asked, and pass requests to the app container.
+#
+# APP_DOMAIN comes from .env through compose.yaml. Caddy asks Let's Encrypt for
+# a certificate for that name the first time it starts, which only works once
+# the domain's A record points at this machine and ports 80 and 443 are open.
+
+{
+	# Caddy's own log — certificate renewals, start-up, upstream trouble. The app
+	# writes its own JSON log separately; this one is about the plumbing.
+	log {
+		output stdout
+		format json
+	}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# The only security header Caddy sets. The app sets the rest itself (Hono
+	# middleware), and a header written in two places is a header that will one
+	# day disagree with itself. HSTS is the exception because it is about the
+	# connection, which is Caddy's half of the job, not the app's.
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	# Attachments are capped at 20 MB by the app; 25 MB here leaves room for the
+	# multipart envelope and still refuses a body large enough to be a problem
+	# before a single byte reaches the application.
+	request_body {
+		max_size 25MB
+	}
+
+	log {
+		output stdout
+		format json
+	}
+
+	reverse_proxy app:3000 {
+		# Caddy stops sending requests to the app the moment /health/live fails,
+		# and lb_try_duration makes it hold a request open for up to five seconds
+		# waiting for the app to come back instead of returning an error.
+		#
+		# That window is the entire zero-downtime story for version one: a release
+		# stops the old app container and starts the new one, which takes a few
+		# seconds, and requests arriving in that gap wait rather than fail. It is
+		# not true zero downtime — a request that waits longer than five seconds
+		# still fails — and adding proper blue/green is a deliberate later step,
+		# not an oversight.
+		health_uri /health/live
+		health_interval 5s
+		health_timeout 2s
+		lb_try_duration 5s
+		lb_try_interval 250ms
+	}
+}

@@ -1,0 +1,40 @@
+# What never goes into the build context. Two reasons: speed (the context is
+# tarred and sent to the daemon on every build) and safety (a .env copied into a
+# layer stays in the image even if a later stage deletes it).
+
+# Rebuilt inside the image; a host copy would be for the wrong platform.
+node_modules
+**/node_modules
+dist
+
+# History and local state.
+.git
+.gitignore
+.github
+.shots
+data
+*.log
+
+# Secrets. Never, under any name.
+.env
+.env.*
+!.env.example
+inhouse.config.json
+
+# Agent and editor furniture — nothing the build reads.
+.claude
+.devcontainer
+.vscode
+.idea
+.DS_Store
+
+# Prose. The app serves none of it.
+docs
+*.md
+!README.md
+
+# The deployment tooling runs on the server and on the creator's laptop, not
+# inside the container.
+deploy
+compose.yaml
+Caddyfile
