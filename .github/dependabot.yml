@@ -1,0 +1,31 @@
+version: 2
+# Weekly and grouped, so the agent applies one pull request rather than
+# fourteen. An update nobody has time to review is an update that does not
+# happen, which is how a project ends up two years behind.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      # Patches and minors together: they are read as one diff and released as
+      # one change. A major stays on its own, because each one needs a person.
+      dependencies:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    ignore:
+      # The runtime is pinned to Node 24 (.nvmrc, and `engines` requires <25),
+      # so types describing a newer Node would let code typecheck against APIs
+      # the server does not have and fail only when it runs. Lift this together
+      # with the runtime, not before it.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']

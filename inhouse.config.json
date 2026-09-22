@@ -1,0 +1,26 @@
+{
+  "//": [
+    "The few facts about this app that scripts, hooks and skills need to agree on.",
+    "Edit it by hand or let the /setup skill fill it in. No secrets live here — this",
+    "file is committed. Keys and passwords belong in .env and in ~/.config/inhouse/.",
+    "",
+    "appName   the name people see in the browser tab and in e-mails.",
+    "profile   'solo' — you review, merge and release your own work.",
+    "          'team' — the agent opens a pull request and stops.",
+    "timeZone  an IANA name. The whole app uses this one zone, not the reader's.",
+    "locale    a BCP 47 tag. The whole app formats dates and numbers with it.",
+    "deploy.host    the SSH alias of your server as it appears in ~/.ssh/config,",
+    "               never a raw address — addresses are not committed.",
+    "deploy.dir     the folder on that server holding compose.yaml.",
+    "deploy.domain  the domain the app answers on, for Caddy and for release checks."
+  ],
+  "appName": "InHouse",
+  "profile": "solo",
+  "timeZone": "Europe/Kyiv",
+  "locale": "en-GB",
+  "deploy": {
+    "host": "inhouse-server",
+    "dir": "/srv/inhouse",
+    "domain": "app.example.com"
+  }
+}
