@@ -201,3 +201,13 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   Hostinger are the candidates).
 - Whether TanStack Form earns a place or plain forms with Zod suffice
   (research pass).
+- Before the first tagged version, a six-angle review of the whole kit,
+  findings reported before fixes: fit for the who and the what; our own rules
+  and requests; code review; code quality; best practice for agent-driven
+  development; and the goal itself — a more predictable, reliable, faster and
+  robust way for a creator to build their system. (Owner, 22 September 2026.)
+- Dev database: PGlite on disk under `data/dev` when `DATABASE_URL` is
+  unset, so `pnpm dev` needs no Postgres install and no Docker on the
+  creator's machine; Postgres in production and in one CI job.
+- The screenshot script signs in through `DEV_AUTO_SIGN_IN_EMAIL`, a
+  development-only setting the server refuses in production.
