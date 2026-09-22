@@ -20,7 +20,7 @@
   "locale": "en-US",
   "deploy": {
     "host": "inhouse-server",
-    "dir": "/srv/inhouse",
+    "dir": "/opt/inhouse",
     "domain": "app.example.com"
   }
 }

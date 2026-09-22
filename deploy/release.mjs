@@ -452,7 +452,7 @@ echo restored
   }
   const url = `postgres://app:${password}@db:5432/${rehearsalDb}`;
   const migration = remote(
-    `${compose} run --rm --no-deps -e DATABASE_URL=${q(url)} app node dist/server/db/migrate-cli.js`,
+    `${compose} run --rm --no-deps -e DATABASE_URL=${q(url)} app node dist/server/src/db/migrate-cli.js`,
     { allowFailure: true },
   );
   if (migration.status !== 0) {
@@ -478,7 +478,7 @@ function migrateForReal() {
   // migration failure is a message on this screen rather than a container that
   // will not come up after the switch.
   const result = remote(
-    `${composeCmd(stagingEnv)} run --rm --no-deps app node dist/server/db/migrate-cli.js`,
+    `${composeCmd(stagingEnv)} run --rm --no-deps app node dist/server/src/db/migrate-cli.js`,
     { allowFailure: true },
   );
   if (result.status !== 0) {

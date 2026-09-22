@@ -37,7 +37,7 @@ RUN pnpm install --frozen-lockfile --prod=false --offline
 # which is minutes later and one restart too late.
 FROM deps AS build
 RUN pnpm build \
- && test -f dist/server/main.js \
+ && test -f dist/server/src/main.js \
  && test -f dist/frontend/index.html
 
 # --- prod-deps --------------------------------------------------------------
@@ -83,4 +83,4 @@ VOLUME ["/data"]
 USER node
 
 EXPOSE 3000
-CMD ["node", "dist/server/main.js"]
+CMD ["node", "dist/server/src/main.js"]
