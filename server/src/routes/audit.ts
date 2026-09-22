@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { AuditPage, ListQuery, type AuditEvent } from '../../../shared/schemas.ts';
 import { requireRole, type AppEnv } from '../auth.ts';
+import { orFail } from '../errors.ts';
 import { db } from '../db/index.ts';
 import { auditLog, user } from '../db/schema.ts';
 
@@ -21,7 +22,7 @@ const after = (cursor: string): SQL =>
 export const auditRoutes = new Hono<AppEnv>().get(
   '/',
   requireRole('viewer'),
-  zValidator('query', AuditQuery),
+  zValidator('query', AuditQuery, orFail),
   async (c) => {
     const query = c.req.valid('query');
     const where: SQL[] = [];

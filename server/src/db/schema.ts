@@ -2,11 +2,19 @@
 // SQL it wrote, then `pnpm db:migrate`. Never edit a migration that has been
 // applied anywhere.
 //
-// The four tables at the top are Better Auth's own — they are exactly what
-// `npx @better-auth/cli generate` produces for the Drizzle adapter with our
-// options, so a future upgrade can regenerate them and show a clean diff.
-// Singular table names, snake_case columns; the extra columns on `user` are
-// declared to Better Auth as additional fields in `auth.ts`.
+// The four tables at the top are Better Auth's own — the columns, names and
+// defaults are what `npx @better-auth/cli generate` produces for the Drizzle
+// adapter with our options, so a future upgrade can regenerate them and show
+// a readable diff. Singular table names, snake_case columns; the extra
+// columns on `user` are declared to Better Auth as additional fields in
+// `auth.ts`.
+//
+// One deliberate difference: every timestamp here carries its time zone,
+// where the generator writes a plain one. A plain timestamp is a wall-clock
+// reading with no zone attached, so `now()` fills it with whatever the server
+// believes the local time to be — which meant a job queued for an hour's time
+// was picked up at once on a machine set to anything but UTC. A time in this
+// app is an instant, and the column now says so.
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -28,8 +36,8 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
@@ -37,17 +45,17 @@ export const user = pgTable('user', {
   active: boolean('active').default(true),
   locale: text('locale'),
   timeZone: text('time_zone'),
-  lastSeenAt: timestamp('last_seen_at'),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
 });
 
 export const session = pgTable(
   'session',
   {
     id: text('id').primaryKey(),
-    expiresAt: timestamp('expires_at').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     token: text('token').notNull().unique(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .$onUpdate(() => new Date())
       .notNull(),
     ipAddress: text('ip_address'),
@@ -71,12 +79,12 @@ export const account = pgTable(
     accessToken: text('access_token'),
     refreshToken: text('refresh_token'),
     idToken: text('id_token'),
-    accessTokenExpiresAt: timestamp('access_token_expires_at'),
-    refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
     scope: text('scope'),
     password: text('password'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .$onUpdate(() => new Date())
       .notNull(),
   },
@@ -89,9 +97,9 @@ export const verification = pgTable(
     id: text('id').primaryKey(),
     identifier: text('identifier').notNull(),
     value: text('value').notNull(),
-    expiresAt: timestamp('expires_at').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -116,7 +124,7 @@ export const items = pgTable(
     dueOn: date('due_on'),
     assigneeId: text('assignee_id').references(() => user.id, { onDelete: 'set null' }),
     // Nothing is erased. A deleted row keeps its history and stays out of lists.
-    deletedAt: timestamp('deleted_at'),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
     ...withTracking(),
   },
   (table) => [
@@ -133,7 +141,7 @@ export const auditLog = pgTable(
   'audit_log',
   {
     id: text('id').primaryKey(),
-    at: timestamp('at').notNull().defaultNow(),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
     actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
     entity: text('entity').notNull(),
     entityId: text('entity_id').notNull(),
@@ -173,17 +181,17 @@ export const jobs = pgTable(
     payload: jsonb('payload')
       .notNull()
       .default(sql`'{}'::jsonb`),
-    runAt: timestamp('run_at').notNull().defaultNow(),
+    runAt: timestamp('run_at', { withTimezone: true }).notNull().defaultNow(),
     attempts: integer('attempts').notNull().default(0),
     maxAttempts: integer('max_attempts').notNull().default(5),
-    lockedUntil: timestamp('locked_until'),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
     lockedBy: text('locked_by'),
     lastError: text('last_error'),
     status: text('status', { enum: ['queued', 'running', 'done', 'failed'] })
       .notNull()
       .default('queued'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    finishedAt: timestamp('finished_at'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
   },
   (table) => [
     // The claim query's index: the worker asks for the oldest due queued job.
@@ -203,8 +211,8 @@ export const notifications = pgTable(
       .notNull()
       .default('queued'),
     error: text('error'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    sentAt: timestamp('sent_at'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
   },
   (table) => [
     index('notifications_status_created_at_idx').on(table.status, table.createdAt.desc()),
@@ -216,8 +224,8 @@ export const notifications = pgTable(
 export const schedules = pgTable('schedules', {
   name: text('name').primaryKey(),
   spec: text('spec').notNull(),
-  lastRunAt: timestamp('last_run_at'),
-  nextRunAt: timestamp('next_run_at').notNull(),
+  lastRunAt: timestamp('last_run_at', { withTimezone: true }),
+  nextRunAt: timestamp('next_run_at', { withTimezone: true }).notNull(),
 });
 
 export const schema = {

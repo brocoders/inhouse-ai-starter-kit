@@ -20,7 +20,7 @@ import { config } from '../config.ts';
 import { db } from '../db/index.ts';
 import { recordChange } from '../db/audit.ts';
 import { attachments } from '../db/schema.ts';
-import { AppError, notFound } from '../errors.ts';
+import { AppError, notFound, orFail } from '../errors.ts';
 
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
@@ -46,7 +46,7 @@ const listQuery = z.object({
 });
 
 export const attachmentsRoutes = new Hono<AppEnv>()
-  .get('/', requireRole('viewer'), zValidator('query', listQuery), async (c) => {
+  .get('/', requireRole('viewer'), zValidator('query', listQuery, orFail), async (c) => {
     const { entity, entityId } = c.req.valid('query');
     const rows = await db
       .select()
@@ -109,7 +109,7 @@ export const attachmentsRoutes = new Hono<AppEnv>()
     });
     return c.json(toAttachment(saved), 201);
   })
-  .get('/:id', requireRole('viewer'), zValidator('param', idParam), async (c) => {
+  .get('/:id', requireRole('viewer'), zValidator('param', idParam, orFail), async (c) => {
     const [row] = await db
       .select()
       .from(attachments)
@@ -131,7 +131,7 @@ export const attachmentsRoutes = new Hono<AppEnv>()
       'Cache-Control': 'private, no-store',
     });
   })
-  .delete('/:id', requireRole('member'), zValidator('param', idParam), async (c) => {
+  .delete('/:id', requireRole('member'), zValidator('param', idParam, orFail), async (c) => {
     const { id } = c.req.valid('param');
     const [row] = await db.select().from(attachments).where(eq(attachments.id, id)).limit(1);
     if (!row) throw notFound('That file');

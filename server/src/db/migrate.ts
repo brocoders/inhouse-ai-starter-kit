@@ -14,6 +14,9 @@ import { query, type Db, type DbHandle } from './index.ts';
 export const migrationsFolder = path.resolve(fileURLToPath(import.meta.url), '../../../drizzle');
 
 export async function migrateDb(target: DbHandle): Promise<void> {
+  // PGlite has one connection and takes its time zone from the host, so it is
+  // told once, here, before anything asks it what time it is.
+  if (target.client) await target.db.execute(sql`set time zone 'UTC'`);
   const run = target.kind === 'postgres' ? migratePg : migratePglite;
   // Each migrator insists on its own driver's database type; the query builder
   // underneath is the same one, so the cast is safe and saves a second wrapper.

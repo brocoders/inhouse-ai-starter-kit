@@ -39,6 +39,11 @@ export function createDb(): DbHandle {
     // A pool that loses a connection emits an error nobody is listening for,
     // which would take the whole process down. Losing one connection is not fatal.
     pool.on('error', () => {});
+    // Every connection speaks UTC, so `now()` and any date the database works
+    // out for itself mean the same thing as a date this app wrote.
+    pool.on('connect', (client) => {
+      void client.query("set time zone 'UTC'");
+    });
     return {
       db: drizzlePg({ client: pool, schema }) as unknown as Db,
       kind: 'postgres',

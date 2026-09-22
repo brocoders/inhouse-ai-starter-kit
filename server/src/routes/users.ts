@@ -22,7 +22,7 @@ import { config } from '../config.ts';
 import { db } from '../db/index.ts';
 import { recordChange } from '../db/audit.ts';
 import { user } from '../db/schema.ts';
-import { AppError, notFound } from '../errors.ts';
+import { AppError, notFound, orFail } from '../errors.ts';
 
 const iso = (at: Date | null): string | null => (at ? at.toISOString() : null);
 
@@ -66,54 +66,63 @@ export const usersRoutes = new Hono<AppEnv>()
     const rows = await db.select().from(user).orderBy(asc(user.name));
     return c.json(rows.map(toUser));
   })
-  .post('/users/invite', requireRole('owner'), zValidator('json', InviteInput), async (c) => {
-    const input = c.req.valid('json');
-    const email = input.email.toLowerCase();
-    const [existing] = await db.select().from(user).where(eq(user.email, email)).limit(1);
-    if (existing) {
-      throw new AppError('conflict', 'Somebody with that e-mail address is already on the list.', {
-        email: 'already invited',
+  .post(
+    '/users/invite',
+    requireRole('owner'),
+    zValidator('json', InviteInput, orFail),
+    async (c) => {
+      const input = c.req.valid('json');
+      const email = input.email.toLowerCase();
+      const [existing] = await db.select().from(user).where(eq(user.email, email)).limit(1);
+      if (existing) {
+        throw new AppError(
+          'conflict',
+          'Somebody with that e-mail address is already on the list.',
+          {
+            email: 'already invited',
+          },
+        );
+      }
+
+      const now = new Date();
+      const row: typeof user.$inferInsert = {
+        id: randomUUID(),
+        name: input.name,
+        email,
+        emailVerified: false,
+        role: input.role,
+        active: true,
+        locale: config.locale,
+        timeZone: config.timeZone,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await db.insert(user).values(row);
+      const [created] = await db.select().from(user).where(eq(user.id, row.id)).limit(1);
+      if (!created) throw notFound('The person you just invited');
+
+      await recordChange(db, {
+        actorId: c.get('user').id,
+        entity: 'user',
+        entityId: created.id,
+        action: 'created',
+        after: toUser(created),
       });
-    }
 
-    const now = new Date();
-    const row: typeof user.$inferInsert = {
-      id: randomUUID(),
-      name: input.name,
-      email,
-      emailVerified: false,
-      role: input.role,
-      active: true,
-      locale: config.locale,
-      timeZone: config.timeZone,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await db.insert(user).values(row);
-    const [created] = await db.select().from(user).where(eq(user.id, row.id)).limit(1);
-    if (!created) throw notFound('The person you just invited');
+      // Better Auth mints the token, stores it and calls our `sendMagicLink`.
+      await auth.api.signInMagicLink({
+        body: { email, callbackURL: '/' },
+        headers: c.req.raw.headers,
+      });
 
-    await recordChange(db, {
-      actorId: c.get('user').id,
-      entity: 'user',
-      entityId: created.id,
-      action: 'created',
-      after: toUser(created),
-    });
-
-    // Better Auth mints the token, stores it and calls our `sendMagicLink`.
-    await auth.api.signInMagicLink({
-      body: { email, callbackURL: '/' },
-      headers: c.req.raw.headers,
-    });
-
-    return c.json(toUser(created), 201);
-  })
+      return c.json(toUser(created), 201);
+    },
+  )
   .patch(
     '/users/:id',
     requireRole('owner'),
-    zValidator('param', z.object({ id: z.string().min(1) })),
-    zValidator('json', UpdateUserInput),
+    zValidator('param', z.object({ id: z.string().min(1) }), orFail),
+    zValidator('json', UpdateUserInput, orFail),
     async (c) => {
       const { id } = c.req.valid('param');
       const input = c.req.valid('json');

@@ -82,8 +82,8 @@ async function jobSummary(since24h: Date): Promise<OpsStatus['jobs']> {
       count(*) filter (where status = 'queued')::int as queued,
       count(*) filter (where status = 'running')::int as running,
       count(*) filter (where status = 'failed' and finished_at >= ${since24h})::int as failed24h,
-      to_char(max(finished_at) filter (where status = 'done'), ${sql.raw(AS_ISO)}) as last_succeeded_at,
-      to_char(max(finished_at) filter (where status = 'failed'), ${sql.raw(AS_ISO)}) as last_failed_at
+      to_char(max(finished_at) filter (where status = 'done') at time zone 'UTC', ${sql.raw(AS_ISO)}) as last_succeeded_at,
+      to_char(max(finished_at) filter (where status = 'failed') at time zone 'UTC', ${sql.raw(AS_ISO)}) as last_failed_at
     from ${jobs}
     group by name
     order by name

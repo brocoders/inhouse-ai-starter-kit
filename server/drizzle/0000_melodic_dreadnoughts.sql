@@ -6,12 +6,12 @@ CREATE TABLE IF NOT EXISTS "account" (
 	"access_token" text,
 	"refresh_token" text,
 	"id_token" text,
-	"access_token_expires_at" timestamp,
-	"refresh_token_expires_at" timestamp,
+	"access_token_expires_at" timestamp with time zone,
+	"refresh_token_expires_at" timestamp with time zone,
 	"scope" text,
 	"password" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "attachments" (
@@ -21,15 +21,15 @@ CREATE TABLE IF NOT EXISTS "attachments" (
 	"file_name" text NOT NULL,
 	"content_type" text NOT NULL,
 	"size" integer NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_by" text,
 	"updated_by" text
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "audit_log" (
 	"id" text PRIMARY KEY NOT NULL,
-	"at" timestamp DEFAULT now() NOT NULL,
+	"at" timestamp with time zone DEFAULT now() NOT NULL,
 	"actor_id" text,
 	"entity" text NOT NULL,
 	"entity_id" text NOT NULL,
@@ -44,9 +44,9 @@ CREATE TABLE IF NOT EXISTS "items" (
 	"status" text DEFAULT 'open' NOT NULL,
 	"due_on" date,
 	"assignee_id" text,
-	"deleted_at" timestamp,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_by" text,
 	"updated_by" text
 );
@@ -55,15 +55,15 @@ CREATE TABLE IF NOT EXISTS "jobs" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"payload" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"run_at" timestamp DEFAULT now() NOT NULL,
+	"run_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"attempts" integer DEFAULT 0 NOT NULL,
 	"max_attempts" integer DEFAULT 5 NOT NULL,
-	"locked_until" timestamp,
+	"locked_until" timestamp with time zone,
 	"locked_by" text,
 	"last_error" text,
 	"status" text DEFAULT 'queued' NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"finished_at" timestamp
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"finished_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "notifications" (
@@ -73,23 +73,23 @@ CREATE TABLE IF NOT EXISTS "notifications" (
 	"subject" text NOT NULL,
 	"status" text DEFAULT 'queued' NOT NULL,
 	"error" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"sent_at" timestamp
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"sent_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "schedules" (
 	"name" text PRIMARY KEY NOT NULL,
 	"spec" text NOT NULL,
-	"last_run_at" timestamp,
-	"next_run_at" timestamp NOT NULL
+	"last_run_at" timestamp with time zone,
+	"next_run_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "session" (
 	"id" text PRIMARY KEY NOT NULL,
-	"expires_at" timestamp NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
 	"token" text NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone NOT NULL,
 	"ip_address" text,
 	"user_agent" text,
 	"user_id" text NOT NULL,
@@ -102,13 +102,13 @@ CREATE TABLE IF NOT EXISTS "user" (
 	"email" text NOT NULL,
 	"email_verified" boolean DEFAULT false NOT NULL,
 	"image" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"role" text DEFAULT 'member',
 	"active" boolean DEFAULT true,
 	"locale" text,
 	"time_zone" text,
-	"last_seen_at" timestamp,
+	"last_seen_at" timestamp with time zone,
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
@@ -116,9 +116,9 @@ CREATE TABLE IF NOT EXISTS "verification" (
 	"id" text PRIMARY KEY NOT NULL,
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,
-	"expires_at" timestamp NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 DO $$ BEGIN

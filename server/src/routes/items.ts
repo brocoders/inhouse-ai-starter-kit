@@ -34,7 +34,7 @@ import { requireRole, type AppEnv } from '../auth.ts';
 import { db, type Db } from '../db/index.ts';
 import { recordChange } from '../db/audit.ts';
 import { items, user } from '../db/schema.ts';
-import { AppError, notFound } from '../errors.ts';
+import { AppError, notFound, orFail } from '../errors.ts';
 import { addDays, calendarDay } from '../time.ts';
 
 type ItemRow = typeof items.$inferSelect & { assigneeName: string | null };
@@ -143,15 +143,15 @@ async function readItem(database: Db, id: string): Promise<ItemRow | undefined> 
 const idParam = z.object({ id: z.string().min(1) });
 
 export const itemsRoutes = new Hono<AppEnv>()
-  .get('/', requireRole('viewer'), zValidator('query', ItemListQuery), async (c) => {
+  .get('/', requireRole('viewer'), zValidator('query', ItemListQuery, orFail), async (c) => {
     return c.json(await listItems(db, c.req.valid('query'), c.get('user').timeZone));
   })
-  .get('/:id', requireRole('viewer'), zValidator('param', idParam), async (c) => {
+  .get('/:id', requireRole('viewer'), zValidator('param', idParam, orFail), async (c) => {
     const row = await readItem(db, c.req.valid('param').id);
     if (!row) throw notFound('That item');
     return c.json(toItem(row));
   })
-  .post('/', requireRole('member'), zValidator('json', ItemInput), async (c) => {
+  .post('/', requireRole('member'), zValidator('json', ItemInput, orFail), async (c) => {
     const input = c.req.valid('json');
     const actor = c.get('user');
     const now = new Date();
@@ -182,8 +182,8 @@ export const itemsRoutes = new Hono<AppEnv>()
   .patch(
     '/:id',
     requireRole('member'),
-    zValidator('param', idParam),
-    zValidator('json', ItemPatchInput),
+    zValidator('param', idParam, orFail),
+    zValidator('json', ItemPatchInput, orFail),
     async (c) => {
       const { id } = c.req.valid('param');
       const input = c.req.valid('json');
@@ -226,7 +226,7 @@ export const itemsRoutes = new Hono<AppEnv>()
       return c.json(toItem(after));
     },
   )
-  .delete('/:id', requireRole('owner'), zValidator('param', idParam), async (c) => {
+  .delete('/:id', requireRole('owner'), zValidator('param', idParam, orFail), async (c) => {
     const { id } = c.req.valid('param');
     const actor = c.get('user');
     const before = await readItem(db, id);

@@ -157,30 +157,50 @@ export const app = new Hono<AppEnv>()
     return c.json(body, 500);
   });
 
-// The built screens, when they exist. A fresh clone has no `dist/frontend`
-// and this whole section is skipped, which is why `pnpm dev:server` works on
-// its own.
-if (existsSync(frontendDir)) {
-  const noStore = new Set(['/index.html', '/sw.js', '/manifest.webmanifest', '/registerSW.js']);
+/**
+ * Hand the built screens to a browser.
+ *
+ * Two cache rules, and they matter more than they look. A file under
+ * `/assets/` has a hash of its own contents in its name, so that exact file
+ * can never change and the browser may keep it for a year — which is what
+ * makes a second visit instant. The shell, the service worker and the
+ * manifest are the opposite: they are how a browser finds out that a new
+ * release exists, so a cached copy would leave somebody on last week's app
+ * with no way to notice.
+ *
+ * Anything else that a browser asked for as a page gets the shell, and the
+ * router inside it works out which screen that address means. `/api` and
+ * `/health` are matched before this, so they are never mistaken for a screen.
+ */
+export function mountFrontend(target: Hono<AppEnv>, dir: string): void {
+  const root = path.relative(process.cwd(), dir);
+  const noStore = new Set([
+    '/index.html',
+    '/sw.js',
+    '/manifest.webmanifest',
+    '/registerSW.js',
+    '/',
+  ]);
 
-  app.use('/*', async (c, next) => {
+  target.use('/*', async (c, next) => {
     await next();
     if (c.req.path.startsWith('/assets/')) {
-      // The bundler put a hash in the name, so this exact file never changes.
       c.header('Cache-Control', 'private, max-age=31536000, immutable');
-    } else if (noStore.has(c.req.path) || c.req.path === '/') {
-      // The shell and the service worker decide whether there is a new
-      // release, so they must never come from a cache.
+    } else if (noStore.has(c.req.path)) {
       c.header('Cache-Control', 'no-store');
     }
   });
-  app.use('/*', serveStatic({ root: path.relative(process.cwd(), frontendDir) }));
-  // Anything else that a browser asked for as a page is the app itself: the
-  // router in the browser works out which screen it is.
-  app.get(
-    '*',
-    serveStatic({ path: path.join(path.relative(process.cwd(), frontendDir), 'index.html') }),
-  );
+  target.use('/*', serveStatic({ root }));
+  const shell = serveStatic({ path: path.join(root, 'index.html') });
+  target.get('*', async (c, next) => {
+    const response = await shell(c, next);
+    if (response instanceof Response) response.headers.set('Cache-Control', 'no-store');
+    return response;
+  });
 }
+
+// A fresh clone has no `dist/frontend`, and then none of this is mounted —
+// which is why `pnpm dev:server` runs on its own while Vite serves the screens.
+if (existsSync(frontendDir)) mountFrontend(app, frontendDir);
 
 export type AppType = typeof app;

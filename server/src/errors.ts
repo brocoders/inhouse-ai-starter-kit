@@ -39,3 +39,20 @@ export const statusForKind = (kind: ErrorKind): ContentfulStatusCode => STATUS[k
 export const notFound = (what: string) => new AppError('not_found', `${what} was not found.`);
 export const forbidden = (why: string) => new AppError('forbidden', why);
 export const unauthenticated = () => new AppError('auth', 'You need to sign in to do that.');
+
+/**
+ * What to do when something arriving from outside does not match its schema.
+ *
+ * `zValidator` answers with its own body by default, which would be the one
+ * response in the app that does not look like all the others. Passing this as
+ * its hook makes a bad form come back in the same shape as everything else,
+ * with a message for each field the screen can put next to the input.
+ */
+export function orFail(result: { success: boolean; error?: unknown }): void {
+  if (result.success) return;
+  const issues =
+    (result.error as { issues?: { path: PropertyKey[]; message: string }[] })?.issues ?? [];
+  const fields: Record<string, string> = {};
+  for (const issue of issues) fields[issue.path.map(String).join('.') || 'body'] = issue.message;
+  throw new AppError('validation', 'Some of what you sent is not usable.', fields);
+}

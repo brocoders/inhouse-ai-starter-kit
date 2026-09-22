@@ -42,31 +42,42 @@ export function clearRecentErrors(): void {
   ring.length = 0;
 }
 
-export const log = pino({
-  level: process.env.LOG_LEVEL ?? (config.isTest ? 'silent' : 'info'),
-  base: { release: config.release },
-  timestamp: pino.stdTimeFunctions.isoTime,
-  hooks: {
-    // Anything logged at error level is also a candidate for the health page,
-    // so there is one place to call and not two.
-    logMethod(args, method, level) {
-      if (level >= 50) {
-        const [first, second] = args as [unknown, unknown];
-        const context = (typeof first === 'object' && first !== null ? first : {}) as {
-          requestId?: string;
-          err?: { message?: string };
-        };
-        const message =
-          typeof first === 'string'
-            ? first
-            : typeof second === 'string'
-              ? second
-              : (context.err?.message ?? 'error');
-        recordError(message, context.requestId ?? null);
-      }
-      return method.apply(this, args as Parameters<typeof method>);
+// A test run throws the lines away rather than turning the logger off. Pino
+// skips a level it is not going to print, hook and all, so silencing it would
+// also empty the list of recent errors the health page reads — and that list
+// is one of the things the tests are here to check.
+const destination: pino.DestinationStream = config.isTest
+  ? { write: () => {} }
+  : pino.destination(process.stdout.fd);
+
+export const log = pino(
+  {
+    level: process.env.LOG_LEVEL ?? 'info',
+    base: { release: config.release },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    hooks: {
+      // Anything logged at error level is also a candidate for the health
+      // page, so there is one place to call and not two.
+      logMethod(args, method, level) {
+        if (level >= 50) {
+          const [first, second] = args as [unknown, unknown];
+          const context = (typeof first === 'object' && first !== null ? first : {}) as {
+            requestId?: string;
+            err?: { message?: string };
+          };
+          const message =
+            typeof first === 'string'
+              ? first
+              : typeof second === 'string'
+                ? second
+                : (context.err?.message ?? 'error');
+          recordError(message, context.requestId ?? null);
+        }
+        return method.apply(this, args as Parameters<typeof method>);
+      },
     },
   },
-});
+  destination,
+);
 
 export type Log = typeof log;
