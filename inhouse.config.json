@@ -16,8 +16,8 @@
   ],
   "appName": "InHouse",
   "profile": "solo",
-  "timeZone": "Europe/Kyiv",
-  "locale": "en-GB",
+  "timeZone": "UTC",
+  "locale": "en-US",
   "deploy": {
     "host": "inhouse-server",
     "dir": "/srv/inhouse",
