@@ -16,19 +16,20 @@ The agent will hand those to you as a numbered list and wait. The rest is a
 single command each, which the agent runs.
 
 ```mermaid
-flowchart LR
-  Laptop["Your laptop<br/>pnpm release &lt;commit&gt;"]
+flowchart TB
+  Laptop["Your laptop<br/>one release command"]
+  People["The people who use it"]
   subgraph Server["One rented server"]
     direction TB
-    Caddy["Caddy<br/>the front door, handles HTTPS"]
+    Caddy["Caddy — the front door,<br/>which handles HTTPS"]
     App["The app"]
-    DB["PostgreSQL<br/>every record you have"]
-    Backup["Nightly copy<br/>03:15, kept 14 days"]
+    DB["PostgreSQL —<br/>every record you have"]
+    Backup["A copy every night at 03:15,<br/>fourteen kept"]
     Caddy --> App --> DB
     DB -.-> Backup
   end
-  People["The people who use it"] --> Caddy
-  Laptop -->|"over SSH"| Server
+  Laptop -->|"over SSH"| Caddy
+  People --> Caddy
 ```
 
 ## What you are about to buy

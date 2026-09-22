@@ -29,7 +29,33 @@ export default defineConfig({
     // Before starlight(), which is what the astro-mermaid readme requires: it
     // has to see the ```mermaid code blocks before Starlight's own Markdown
     // handling turns them into highlighted code.
-    mermaid({ theme: 'neutral', autoTheme: true }),
+    mermaid({
+      // One palette rather than the integration's automatic light/dark pair,
+      // which is mermaid's own lavender in light and its dark theme in dark —
+      // neither belongs to this site. A diagram is drawn as a pale figure with
+      // the app's blue on its borders, and it reads the same either way up.
+      // The colours have to be real: mermaid derives shades from them, and a
+      // CSS variable here stops every diagram rendering at all.
+      theme: 'base',
+      autoTheme: false,
+      mermaidConfig: {
+        flowchart: { curve: 'basis', padding: 12, useMaxWidth: true },
+        themeVariables: {
+          fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+          fontSize: '14px',
+          primaryColor: '#eff6ff',
+          primaryTextColor: '#111827',
+          primaryBorderColor: '#3b82f6',
+          secondaryColor: '#f3f4f6',
+          tertiaryColor: '#f9fafb',
+          lineColor: '#6b7280',
+          textColor: '#111827',
+          clusterBkg: '#f3f4f6',
+          clusterBorder: '#d1d5db',
+          edgeLabelBackground: '#ffffff',
+        },
+      },
+    }),
     starlight({
       title: 'InHouse',
       description:

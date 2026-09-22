@@ -29,34 +29,21 @@
     U+A720-A7FF;
 }
 
+/* Starlight's scale is written dark-first: :root holds the dark values and
+   [data-theme='light'] inverts them. `white` is the strongest text colour and
+   `black` is the page background, whichever way round the page is — so the two
+   blocks below look upside down and are not. */
 :root {
   --sl-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --sl-content-width: 46rem;
   --sl-text-code: var(--sl-text-sm);
 
-  /* One accent, the app's blue (#3b82f6) with a darker pair for text on a pale
-     background, so that a link still passes contrast at body size. */
-  --sl-color-accent-low: #dbeafe;
-  --sl-color-accent: #2563eb;
-  --sl-color-accent-high: #1d4ed8;
-
-  /* Neutral greys, the same family the app uses. */
-  --sl-color-white: #ffffff;
-  --sl-color-gray-1: #111827;
-  --sl-color-gray-2: #374151;
-  --sl-color-gray-3: #6b7280;
-  --sl-color-gray-4: #9ca3af;
-  --sl-color-gray-5: #e5e7eb;
-  --sl-color-gray-6: #f3f4f6;
-  --sl-color-gray-7: #f9fafb;
-  --sl-color-black: #f9fafb;
-}
-
-:root[data-theme='dark'] {
+  /* Dark: one accent, the app's blue, with a pale pair for text and buttons. */
   --sl-color-accent-low: #172554;
   --sl-color-accent: #3b82f6;
   --sl-color-accent-high: #bfdbfe;
 
+  /* Neutral greys, the same family the app uses. */
   --sl-color-white: #f9fafb;
   --sl-color-gray-1: #f3f4f6;
   --sl-color-gray-2: #d1d5db;
@@ -66,26 +53,82 @@
   --sl-color-gray-6: #111827;
   --sl-color-gray-7: #090e1a;
   --sl-color-black: #030712;
+
+  /* Starlight colours its four asides blue, purple, orange and red. The app has
+     one accent and two status colours, so they are remapped: a note is neutral,
+     a tip is the accent, "if this went wrong" is the warning amber, and the few
+     things that lose data keep the destructive red. */
+  --sl-color-blue-low: #111827;
+  --sl-color-blue: #6b7280;
+  --sl-color-blue-high: #e5e7eb;
+  --sl-color-purple-low: #172554;
+  --sl-color-purple: #3b82f6;
+  --sl-color-purple-high: #bfdbfe;
+  --sl-color-orange-low: #451a03;
+  --sl-color-orange: #fbbf24;
+  --sl-color-orange-high: #fde68a;
+  --sl-color-red-low: #450a0a;
+  --sl-color-red: #f87171;
+  --sl-color-red-high: #fecaca;
+}
+
+:root[data-theme='light'] {
+  /* Light: the accent darkens, because a link has to hold its own at body size
+     on a pale background. */
+  --sl-color-accent-low: #dbeafe;
+  --sl-color-accent: #2563eb;
+  --sl-color-accent-high: #1d4ed8;
+
+  --sl-color-white: #111827;
+  --sl-color-gray-1: #1f2937;
+  --sl-color-gray-2: #374151;
+  --sl-color-gray-3: #6b7280;
+  --sl-color-gray-4: #9ca3af;
+  --sl-color-gray-5: #e5e7eb;
+  --sl-color-gray-6: #f3f4f6;
+  --sl-color-gray-7: #f9fafb;
+  --sl-color-black: #ffffff;
+
+  --sl-color-blue-low: #f3f4f6;
+  --sl-color-blue: #9ca3af;
+  --sl-color-blue-high: #374151;
+  --sl-color-purple-low: #dbeafe;
+  --sl-color-purple: #2563eb;
+  --sl-color-purple-high: #1d4ed8;
+  --sl-color-orange-low: #fef3c7;
+  --sl-color-orange: #d97706;
+  --sl-color-orange-high: #92400e;
+  --sl-color-red-low: #fee2e2;
+  --sl-color-red: #dc2626;
+  --sl-color-red-high: #991b1b;
+}
+
+/* Starlight rotates a card's icon through orange, purple, green, red and blue.
+   The app has one accent and so does this site, so every card icon takes it. */
+.sl-markdown-content .card {
+  --sl-card-border: var(--sl-color-accent);
+  --sl-card-bg: var(--sl-color-accent-low);
 }
 
 /* Quiet, dense, numbers loudest — the app's own design brief, applied here to
-   the one thing this site has a lot of: tables and steps. */
+   the one thing this site has a lot of: tables and steps.
+
+   `display: block` turns the table itself into the scrolling box. Without it a
+   three-column table at phone width drags the whole article sideways, and a
+   page that scrolls sideways on a phone is the one layout fault this project
+   does not allow. */
 .sl-markdown-content table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
   font-size: var(--sl-text-sm);
 }
 .sl-markdown-content th {
   font-weight: 600;
-  white-space: nowrap;
 }
 .sl-markdown-content td,
 .sl-markdown-content th {
   vertical-align: top;
-}
-
-/* A table wider than the column scrolls inside itself rather than pushing the
-   page sideways; a phone must never scroll horizontally. */
-.sl-markdown-content .table-wrapper {
-  overflow-x: auto;
 }
 
 /* "You should see:" lines are the spine of every guide. They are written as a
@@ -101,14 +144,16 @@
   padding-inline-start: 1rem;
 }
 
-/* Mermaid draws into a <pre class="mermaid">; centre it and let it use the full
-   column without inheriting the code-block frame. */
+/* Mermaid draws into a <pre class="mermaid">. It is given a plate of its own —
+   pale in both themes, because the diagram's own colours are fixed — so that in
+   dark mode it reads as a figure rather than as a hole in the page. */
 .sl-markdown-content pre.mermaid {
-  background: transparent;
-  border: none;
+  background: #ffffff;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
   display: flex;
   justify-content: center;
-  padding: 0;
+  padding: 1rem;
   margin-block: 1.5rem;
 }
 .sl-markdown-content pre.mermaid svg {

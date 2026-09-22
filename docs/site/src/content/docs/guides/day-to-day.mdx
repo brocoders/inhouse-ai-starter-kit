@@ -33,7 +33,7 @@ Either way the agent does the whole job up to its stopping point. It does not
 hand you a half-finished change with a list of things to run.
 
 ```mermaid
-flowchart LR
+flowchart TB
   Ask["You ask"] --> Build["The agent researches,<br/>plans, builds, checks"]
   Build --> P{"Profile"}
   P -->|"solo"| Rel["It reviews, merges,<br/>releases and reports"]
