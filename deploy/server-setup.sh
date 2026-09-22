@@ -2,13 +2,17 @@
 # Turn a brand-new Ubuntu 24.04 machine into one that can run this application.
 # Run it once, as root, from your own laptop:
 #
-#   ssh root@<the server's IP address> 'bash -s' <app name> <domain> \
+#   ssh root@<the server's IP address> 'bash -s' <app name> <domain> [folder] \
 #     < deploy/server-setup.sh
 #
 # for example
 #
 #   ssh root@203.0.113.10 'bash -s' orders orders.example.com \
 #     < deploy/server-setup.sh
+#
+# The folder is optional and defaults to /opt/<app name>. Give it only if
+# `deploy.dir` in inhouse.config.json says something else; the two must agree,
+# because that is the folder `pnpm release` will deploy into.
 #
 # It is safe to run again. Every step checks whether it has already been done
 # and says "already done" instead of doing it twice; nothing here ever touches
@@ -21,10 +25,13 @@ set -euo pipefail
 
 app=${1:-}
 domain=${2:-}
-if [[ ! $app =~ ^[a-z][a-z0-9-]{1,30}$ ]] || [ -z "$domain" ]; then
-	echo "usage: ssh root@IP 'bash -s' <app-name> <domain> < deploy/server-setup.sh" >&2
+dir=${3:-/opt/$app}
+if [[ ! $app =~ ^[a-z][a-z0-9-]{1,30}$ ]] || [ -z "$domain" ] || [[ ! $dir =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+	echo "usage: ssh root@IP 'bash -s' <app-name> <domain> [folder] < deploy/server-setup.sh" >&2
 	echo "  app-name: lowercase letters, digits and dashes, e.g. orders" >&2
 	echo "  domain:   the name people will type, e.g. orders.example.com" >&2
+	echo "  folder:   optional, /opt/<app-name> by default; must match deploy.dir" >&2
+	echo "            in inhouse.config.json" >&2
 	exit 64
 fi
 [ "$(id -u)" -eq 0 ] || {
@@ -32,7 +39,6 @@ fi
 	exit 77
 }
 
-dir=/opt/$app
 backups=/var/backups/$app
 say() { printf '     %s\n' "$*"; }
 step() { printf '\n[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
@@ -45,7 +51,7 @@ if [ "${VERSION_ID:-}" != "24.04" ]; then
 else
 	say "Ubuntu 24.04 — as expected"
 fi
-say "app name '$app', domain '$domain'"
+say "app name '$app', domain '$domain', folder '$dir'"
 
 step "installing the basics"
 export DEBIAN_FRONTEND=noninteractive
@@ -245,6 +251,7 @@ cat >/usr/local/bin/"$app"-backup <<-WRAPPER
 	  echo '{"event":"backup_skipped","reason":"no release deployed yet"}'
 	  exit 0
 	fi
+	export APP_DIR=$dir
 	exec bash "\$target" $app
 WRAPPER
 chmod 755 /usr/local/bin/"$app"-backup
@@ -264,6 +271,7 @@ cat >/etc/systemd/system/"$app"-backup.service <<-UNIT
 	User=deploy
 	Group=deploy
 	Environment=APP_NAME=$app
+	Environment=APP_DIR=$dir
 	ExecStart=/usr/local/bin/$app-backup
 	# A dump that hangs must not still be running when tomorrow's starts.
 	TimeoutStartSec=30min
@@ -298,7 +306,7 @@ cat <<-SUMMARY
 	  Two things left, in this order:
 
 	  1. Open $env_file and fill in the two e-mail lines:
-	       ssh deploy@$domain 'nano /opt/$app/.env'
+	       ssh deploy@$domain 'nano $dir/.env'
 	     (Skip this if you do not need e-mail yet. Sign-in links will not work
 	     until you do.)
 

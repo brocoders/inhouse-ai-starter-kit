@@ -17,7 +17,9 @@ app=${1:-${APP_NAME:-}}
 	echo "usage: bash deploy/db-readonly.sh <app-name>" >&2
 	exit 64
 }
-dir=/opt/$app
+# inhouse.config.json names this folder (deploy.dir); it is /opt/<app> unless
+# the creator chose otherwise, and APP_DIR is how the caller says so.
+dir=${APP_DIR:-/opt/$app}
 sql=$(dirname "$0")/readonly-role.sql
 [ -f "$sql" ] || {
 	echo "cannot find readonly-role.sql next to this script" >&2

@@ -44,8 +44,12 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-dir=/opt/$app
-out=/var/backups/$app
+# inhouse.config.json names this folder (deploy.dir); it is /opt/<app> unless
+# the creator chose otherwise, and APP_DIR is how the caller says so.
+dir=${APP_DIR:-/opt/$app}
+# Where the dumps go. Overridable for the same reason as APP_DIR, and so that
+# this script can be exercised somewhere other than a real server.
+out=${BACKUP_DIR:-/var/backups/$app}
 
 if [ "$dump" = "--list" ]; then
 	echo "Dumps in $out, newest last:"

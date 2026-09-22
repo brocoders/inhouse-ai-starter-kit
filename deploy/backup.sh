@@ -19,8 +19,12 @@ app=${1:-${APP_NAME:-}}
 	echo "usage: bash deploy/backup.sh <app-name>" >&2
 	exit 64
 }
-dir=/opt/$app
-out=/var/backups/$app
+# inhouse.config.json names this folder (deploy.dir); it is /opt/<app> unless
+# the creator chose otherwise, and APP_DIR is how the caller says so.
+dir=${APP_DIR:-/opt/$app}
+# Where the dumps go. Overridable for the same reason as APP_DIR, and so that
+# this script can be exercised somewhere other than a real server.
+out=${BACKUP_DIR:-/var/backups/$app}
 keep_days=14
 
 [ -d "$dir" ] || {
@@ -58,7 +62,7 @@ trap cleanup EXIT
 # or the schema without the data) where a plain .sql file has to be run whole.
 compose exec -T db pg_dump -U app -Fc app >"$staged"
 
-size=$(wc -c <"$staged")
+size=$(wc -c <"$staged" | tr -d " ")
 # An empty or near-empty file means pg_dump wrote an error to stdout, or the
 # container was not there. 1 KB is below any real schema and far above nothing.
 if [ "$size" -lt 1024 ]; then
@@ -72,7 +76,7 @@ trap - EXIT
 # Fourteen days: long enough that a problem noticed a fortnight later is still
 # recoverable, short enough that the dumps never become the reason the disk
 # fills. -mtime +$keep_days only ever matches this app's own files.
-removed=$(find "$out" -maxdepth 1 -type f -name 'app-*.dump' -mtime +"$keep_days" -print -delete | wc -l)
+removed=$(find "$out" -maxdepth 1 -type f -name 'app-*.dump' -mtime +"$keep_days" -print -delete | wc -l | tr -d ' ')
 
 printf '{"event":"backup_completed","file":"%s","bytes":%s,"removed_old":%s,"off_server":false}\n' \
 	"$final" "$size" "$removed"

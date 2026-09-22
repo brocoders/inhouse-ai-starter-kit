@@ -88,7 +88,11 @@ function git(argv, { allowFailure = false } = {}) {
   if (result.status !== 0 && !allowFailure) {
     throw new Refusal(`git ${argv.join(' ')} failed`, (result.stderr || '').trim());
   }
-  return { status: result.status, out: (result.stdout || '').toString().trim(), raw: result.stdout };
+  return {
+    status: result.status,
+    out: (result.stdout || '').toString().trim(),
+    raw: result.stdout,
+  };
 }
 
 const repoRoot = git(['rev-parse', '--show-toplevel']).out;
@@ -114,7 +118,10 @@ function readConfig() {
   }
   const deploy = parsed?.deploy;
   if (!deploy || typeof deploy !== 'object') {
-    throw new Refusal(`${path} has no "deploy" section`, 'Expected { "deploy": { host, dir, domain } }');
+    throw new Refusal(
+      `${path} has no "deploy" section`,
+      'Expected { "deploy": { host, dir, domain } }',
+    );
   }
   const missing = ['host', 'dir', 'domain'].filter(
     (key) => typeof deploy[key] !== 'string' || deploy[key].trim() === '',
@@ -128,7 +135,11 @@ function readConfig() {
   if (!/^\/[\w.\-/]+$/.test(deploy.dir) || deploy.dir === '/') {
     throw new Refusal(`deploy.dir "${deploy.dir}" does not look like a path under /`);
   }
-  return { host: deploy.host.trim(), dir: deploy.dir.trim().replace(/\/$/, ''), domain: deploy.domain.trim() };
+  return {
+    host: deploy.host.trim(),
+    dir: deploy.dir.trim().replace(/\/$/, ''),
+    domain: deploy.domain.trim(),
+  };
 }
 
 // Read here, before anything else, and reported the same way every other
@@ -266,7 +277,9 @@ function gateCommitIsOnMain() {
       'Only what is merged gets released. Merge the branch first, then release the merge commit.',
     );
   }
-  log(`${short} is on ${reference}`, { subject: JSON.stringify(git(['log', '-1', '--format=%s', sha]).out) });
+  log(`${short} is on ${reference}`, {
+    subject: JSON.stringify(git(['log', '-1', '--format=%s', sha]).out),
+  });
 }
 
 // The guard that the 14 September 2026 incident bought. Another agent may have
@@ -283,7 +296,9 @@ function gateAncestor(previous, when) {
     return 'same';
   }
   if (allowRollback) {
-    log(`replacing ${previous.slice(0, 7)} — --allow-rollback was passed, so ancestry is not checked`);
+    log(
+      `replacing ${previous.slice(0, 7)} — --allow-rollback was passed, so ancestry is not checked`,
+    );
     return 'rollback';
   }
   if (git(['cat-file', '-e', `${previous}^{commit}`], { allowFailure: true }).status !== 0) {
@@ -320,9 +335,13 @@ function transfer() {
   const digest = createHash('sha256').update(archive.stdout).digest('hex');
   log('packed', { bytes: archive.stdout.length, sha256: digest.slice(0, 16) });
 
-  const copy = spawnSync('scp', ['-q', '-o', 'BatchMode=yes', localArchive, `${host}:${remoteArchive}`], {
-    encoding: 'utf8',
-  });
+  const copy = spawnSync(
+    'scp',
+    ['-q', '-o', 'BatchMode=yes', localArchive, `${host}:${remoteArchive}`],
+    {
+      encoding: 'utf8',
+    },
+  );
   if (copy.error) throw new Refusal(`could not run scp: ${copy.error.message}`);
   if (copy.status !== 0) throw new Refusal('the transfer failed', String(copy.stderr || ''));
   transferred = true;
@@ -422,12 +441,14 @@ ${compose} exec -T db psql -U app -d postgres -v ON_ERROR_STOP=1 -q \\
 ${compose} exec -T db pg_restore --no-owner -U app -d ${rehearsalDb} < ${q(dumpFile)} >/dev/null 2>&1 || true
 echo restored
 `);
-  const password = remote(
-    `grep -m1 '^POSTGRES_PASSWORD=' ${q(`${dir}/.env`)} | cut -d= -f2-`,
-    { quiet: true },
-  ).out;
+  const password = remote(`grep -m1 '^POSTGRES_PASSWORD=' ${q(`${dir}/.env`)} | cut -d= -f2-`, {
+    quiet: true,
+  }).out;
   if (!password) {
-    throw new Refusal(`POSTGRES_PASSWORD is not set in ${dir}/.env`, 'Re-run deploy/server-setup.sh.');
+    throw new Refusal(
+      `POSTGRES_PASSWORD is not set in ${dir}/.env`,
+      'Re-run deploy/server-setup.sh.',
+    );
   }
   const url = `postgres://app:${password}@db:5432/${rehearsalDb}`;
   const migration = remote(
@@ -637,7 +658,9 @@ function printPlan(previous) {
   for (const line of lines) console.log(`  ${line}`);
   console.log('');
   console.log('  Steps 1 to 8 are gates: if one refuses, the release stops and');
-  console.log(`  ${previous ? previous.slice(0, 7) : 'whatever is there'} keeps serving. The switch is step 9.`);
+  console.log(
+    `  ${previous ? previous.slice(0, 7) : 'whatever is there'} keeps serving. The switch is step 9.`,
+  );
   console.log('');
   console.log('  Nothing was done. Run the same command without --dry-run.');
 }

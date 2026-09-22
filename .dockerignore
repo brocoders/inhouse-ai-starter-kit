@@ -19,7 +19,10 @@ data
 .env
 .env.*
 !.env.example
-inhouse.config.json
+
+# inhouse.config.json is deliberately NOT excluded. It says so itself: no
+# secrets live in it, and the app may read its time zone and locale from it at
+# runtime. Excluding it would be a start-up failure discovered on the server.
 
 # Agent and editor furniture — nothing the build reads.
 .claude
