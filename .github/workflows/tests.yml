@@ -1,0 +1,72 @@
+name: Tests
+# The expensive half: everything `pnpm check` runs, against a real PostgreSQL.
+#
+# It is skipped when a change cannot possibly affect it. `paths-ignore` skips
+# the workflow only when *every* changed file matches, so a commit touching one
+# Markdown file and one source file still runs the suite. Documentation-only
+# changes are still checked — by the CI workflow, which is what actually checks
+# documentation.
+#
+# The service is PostgreSQL 16 because that is what the server runs. Tests use
+# PGlite by default, which embeds a different major version and a single
+# connection; the tests marked `postgres` are here to catch what that hides.
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  application:
+    name: Application checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: inhouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d inhouse_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_POSTGRES: '1'
+      TEST_DATABASE_URL: postgresql://test:disposable-ci-only@localhost:5432/inhouse_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --global pnpm@11.19.0
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # The lockfile is frozen, so an exact hit needs no network at all; the
+      # restore key still saves most of the downloads when one dependency moves.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      # `pnpm check` is the whole gate: hygiene, formatting, both typechecks,
+      # the tests, the frontend build and the design checker. Every build step
+      # happens exactly once inside it, so nothing here may repeat one.
+      - run: pnpm check
