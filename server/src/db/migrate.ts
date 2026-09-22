@@ -5,13 +5,15 @@ import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator';
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator';
 import { sql } from 'drizzle-orm';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { config } from '../config.ts';
 import { query, type Db, type DbHandle } from './index.ts';
 
-// Resolved from this file so it works the same run from source and run from
-// `dist/`, where the layout below `server/` is identical.
-export const migrationsFolder = path.resolve(fileURLToPath(import.meta.url), '../../../drizzle');
+// The migrations are SQL files, not TypeScript, so `tsc` does not carry them
+// into `dist/` and they cannot be found next to the compiled code. They are
+// found from the application's own folder instead, which is where the server
+// is started from in development and in the container alike — the same
+// assumption the built screens under `dist/frontend` already make.
+export const migrationsFolder = path.resolve('server/drizzle');
 
 export async function migrateDb(target: DbHandle): Promise<void> {
   // PGlite has one connection and takes its time zone from the host, so it is
