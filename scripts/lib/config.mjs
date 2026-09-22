@@ -102,7 +102,7 @@ export function readConfig({ file = CONFIG_PATH } = {}) {
     'It is the folder on the server holding compose.yaml.',
   );
   if (!dir.startsWith('/'))
-    fail(`"deploy.dir" is "${dir}"; it has to be an absolute path such as /srv/inhouse.`);
+    fail(`"deploy.dir" is "${dir}"; it has to be an absolute path such as /opt/inhouse.`);
   const domain = requireString(
     deploy.domain,
     'deploy.domain',
