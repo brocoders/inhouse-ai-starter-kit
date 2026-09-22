@@ -55,6 +55,11 @@ export const InviteInput = z.object({
 });
 export const UpdateUserInput = z.object({ role: Role.optional(), active: z.boolean().optional() });
 
+// What people may change about themselves. Their role and whether they are
+// still active are not on this list: those are an owner's to decide.
+export const UpdateMeInput = z.object({ name: z.string().trim().min(1).max(120).optional() });
+export type UpdateMeInput = z.infer<typeof UpdateMeInput>;
+
 // The example entity ---------------------------------------------------------
 // `items` is the worked example every new app copies and then deletes. One
 // title, a status, an optional due date and an optional owner: enough to show
@@ -82,6 +87,21 @@ export const ItemInput = z.object({
   assigneeId: z.string().nullable().optional(),
 });
 export type ItemInput = z.infer<typeof ItemInput>;
+
+// A change to one item. Every field is optional — send only what moved. Note
+// this is not `ItemInput.partial()`: that would keep the `status` default and
+// quietly reopen a done item on a form that never mentioned status.
+export const ItemPatchInput = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  notes: z.string().trim().max(5000).nullable().optional(),
+  status: ItemStatus.optional(),
+  dueOn: z.iso.date().nullable().optional(),
+  assigneeId: z.string().nullable().optional(),
+  // The `updatedAt` the screen last saw. If the row has moved on since, the
+  // server answers `conflict` instead of overwriting somebody else's change.
+  updatedAt: z.iso.datetime().optional(),
+});
+export type ItemPatchInput = z.infer<typeof ItemPatchInput>;
 
 export const ItemListQuery = ListQuery.extend({
   status: ItemStatus.optional(),
