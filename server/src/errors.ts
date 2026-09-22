@@ -3,11 +3,12 @@
 // sentence a person can read; the server turns it into the response body and
 // the status code. Anything else that escapes is a bug: it becomes a generic
 // "permanent" answer and the stack goes to the log, never to the browser.
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { ApiError } from '../../shared/schemas.ts';
 
 export type ErrorKind = ApiError['kind'];
 
-const STATUS: Record<ErrorKind, number> = {
+const STATUS: Record<ErrorKind, ContentfulStatusCode> = {
   validation: 400,
   auth: 401,
   forbidden: 403,
@@ -28,12 +29,12 @@ export class AppError extends Error {
     this.fields = fields;
   }
 
-  get status(): number {
+  get status(): ContentfulStatusCode {
     return STATUS[this.kind];
   }
 }
 
-export const statusForKind = (kind: ErrorKind): number => STATUS[kind];
+export const statusForKind = (kind: ErrorKind): ContentfulStatusCode => STATUS[kind];
 
 export const notFound = (what: string) => new AppError('not_found', `${what} was not found.`);
 export const forbidden = (why: string) => new AppError('forbidden', why);

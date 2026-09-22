@@ -9,6 +9,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import type { SQL } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import path from 'node:path';
 import pg from 'pg';
@@ -62,3 +63,17 @@ export function createDb(): DbHandle {
 
 export const handle: DbHandle = createDb();
 export const db: Db = handle.db;
+
+/**
+ * Run SQL that the query builder cannot express and read the rows back.
+ *
+ * A raw result is shaped by the driver rather than by the schema, so the two
+ * engines disagree about detail — most sharply about dates, where the
+ * PostgreSQL driver hands back a string and PGlite a `Date`. Anything raw
+ * therefore asks the database for the shape it wants (a count as an integer,
+ * a timestamp already formatted as text) instead of converting afterwards.
+ */
+export async function query<T extends Record<string, unknown>>(statement: SQL, database: Db = db): Promise<T[]> {
+  const result = (await database.execute(statement)) as unknown as { rows: T[] };
+  return result.rows;
+}

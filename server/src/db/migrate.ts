@@ -7,7 +7,7 @@ import { sql } from 'drizzle-orm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.ts';
-import type { Db, DbHandle } from './index.ts';
+import { query, type Db, type DbHandle } from './index.ts';
 
 // Resolved from this file so it works the same run from source and run from
 // `dist/`, where the layout below `server/` is identical.
@@ -27,8 +27,9 @@ export async function migrateDb(target: DbHandle): Promise<void> {
 
 /** How many migrations this database has applied — the ops page's schema version. */
 export async function schemaVersion(db: Db): Promise<number> {
-  const result = await db.execute<{ count: string | number }>(
+  const rows = await query<{ count: number }>(
     sql`select count(*)::int as count from drizzle.__drizzle_migrations`,
+    db,
   );
-  return Number(result.rows[0]?.count ?? 0);
+  return Number(rows[0]?.count ?? 0);
 }
