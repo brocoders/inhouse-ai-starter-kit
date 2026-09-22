@@ -48,7 +48,15 @@ export const auth = betterAuth({
   // behind one host), so the session cookie is a plain first-party cookie.
   trustedOrigins: [config.appUrl],
   database: drizzleAdapter(db, { provider: 'pg', schema }),
-  emailAndPassword: { enabled: true, autoSignIn: true },
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: true,
+    // Without this, `/api/auth/sign-up/email` would be open to the world and
+    // "invitation only" would be a comment rather than a rule. People get an
+    // account when an owner invites them and no other way; a password is
+    // something they add afterwards.
+    disableSignUp: true,
+  },
   user: {
     additionalFields: {
       // `input: false` keeps these out of anything a signing-up person can
@@ -87,6 +95,19 @@ export const auth = betterAuth({
       disableSignUp: true,
       expiresIn: 60 * 60, // an hour is long enough to find the mail
       async sendMagicLink({ email, url }) {
+        // `disableSignUp` stops the plugin creating an account, but it only
+        // checks that when the link is opened — the request to send one is
+        // answered for any address at all. Left alone, a stranger could use
+        // this app to post mail to anybody. So nothing is sent unless the
+        // address already belongs to somebody here. The caller gets the same
+        // answer either way, which is also how it should be: it must not
+        // become a way to find out who has an account.
+        const [known] = await db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.email, email))
+          .limit(1);
+        if (!known) return;
         await notify({
           email,
           subject: `Sign in to ${config.appName}`,
@@ -156,7 +177,10 @@ export const requireUser: MiddlewareHandler<AppEnv> = async (c, next) => {
   const signedIn = await currentUser(c);
   if (!signedIn) throw new AppError('auth', 'You need to sign in to do that.');
   if (!signedIn.active) {
-    throw new AppError('forbidden', 'This account has been turned off. Ask an owner to turn it back on.');
+    throw new AppError(
+      'forbidden',
+      'This account has been turned off. Ask an owner to turn it back on.',
+    );
   }
   c.set('user', signedIn);
   const since = signedIn.lastSeenAt ? Date.now() - signedIn.lastSeenAt.getTime() : Infinity;

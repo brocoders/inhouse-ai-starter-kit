@@ -2,7 +2,8 @@
 // validated once, and if anything is missing the process stops immediately
 // with a sentence the person who deployed it can act on — a server that starts
 // half-configured fails later, in the dark, in front of a user.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
@@ -76,7 +77,35 @@ function developmentSecret(dataDir: string): string {
   return secret;
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+/**
+ * A test run gets a world of its own.
+ *
+ * `node --test` sets `NODE_TEST_CONTEXT` in every test process, and reacting
+ * to it here rather than in a test helper is what makes it reliable: settings
+ * are read the moment something imports this file, which can happen before
+ * any helper has had a chance to run. A test must never write into the folder
+ * somebody is developing in — it would replace their database and their
+ * outbox — and must never reach a real PostgreSQL or send real e-mail because
+ * a stale variable was left in the shell.
+ */
+function forTests(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const dataDir = mkdtempSync(path.join(tmpdir(), 'inhouse-test-'));
+  const { DATABASE_URL, RESEND_API_KEY, BACKUP_DIR, DEV_AUTO_SIGN_IN_EMAIL, ...rest } = env;
+  return {
+    ...rest,
+    NODE_ENV: 'test',
+    DATA_DIR: dataDir,
+    // The one test run that wants a real PostgreSQL says so deliberately,
+    // with its own variable, so no stray `DATABASE_URL` can point a test suite
+    // at a database somebody cares about.
+    ...(env.TEST_POSTGRES === '1' && env.TEST_DATABASE_URL
+      ? { DATABASE_URL: env.TEST_DATABASE_URL }
+      : {}),
+  };
+}
+
+export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
+  const env = source.NODE_TEST_CONTEXT === undefined ? source : forTests(source);
   const parsed = Env.safeParse(env);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.') || 'env'}: ${i.message}`);
@@ -96,7 +125,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       'DEV_AUTO_SIGN_IN_EMAIL is set. That setting lets anyone in without signing in and exists only for development. Remove it before running in production.',
     );
   }
-  if (e.RESEND_API_KEY && !env.EMAIL_FROM) {
+  if (e.RESEND_API_KEY && !source.EMAIL_FROM) {
     problems.push(
       'RESEND_API_KEY is set but EMAIL_FROM is not. Resend refuses mail from an address you have not verified, so set EMAIL_FROM to an address on your own domain.',
     );

@@ -122,7 +122,8 @@ export const usersRoutes = new Hono<AppEnv>()
 
       // An app with nobody who can change anything is an app nobody can fix.
       const losingAnOwner =
-        (before.role === 'owner' && before.active === true) &&
+        before.role === 'owner' &&
+        before.active === true &&
         ((input.role !== undefined && input.role !== 'owner') || input.active === false);
       if (losingAnOwner && (await activeOwnersOtherThan(id)) === 0) {
         throw new AppError(

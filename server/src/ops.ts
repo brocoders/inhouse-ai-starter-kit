@@ -159,7 +159,8 @@ export async function opsStatus(now: Date = new Date()): Promise<OpsStatus> {
     problems.push({
       code: 'database_down',
       severity: 'error',
-      message: 'The app cannot reach its database. Nothing can be saved or read until it comes back.',
+      message:
+        'The app cannot reach its database. Nothing can be saved or read until it comes back.',
       since: null,
       href: null,
     });
@@ -194,7 +195,8 @@ export async function opsStatus(now: Date = new Date()): Promise<OpsStatus> {
     problems.push({
       code: 'worker_stale',
       severity: 'error',
-      message: 'Background work has stopped running. Reminders and anything else that happens on its own will not happen.',
+      message:
+        'Background work has stopped running. Reminders and anything else that happens on its own will not happen.',
       since: beat ? beat.toISOString() : null,
       href: null,
     });

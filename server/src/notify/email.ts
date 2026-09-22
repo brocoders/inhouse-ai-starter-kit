@@ -23,12 +23,24 @@ export type Channel = {
   send(message: Message): Promise<void>;
 };
 
+// The last message the outbox wrote, so the seed script can show the owner
+// their own sign-in link and a test can read what was sent without opening a
+// mailbox. Only ever set when there is no Resend key.
+let lastWritten: { file: string; body: string } | undefined;
+
+export function lastOutboxMessage(): { file: string; body: string } | undefined {
+  return lastWritten;
+}
+
 const outbox: Channel = {
   name: 'email',
   async send(message) {
     await mkdir(config.outboxDir, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const file = path.join(config.outboxDir, `${stamp}-${Math.random().toString(36).slice(2, 8)}.eml`);
+    const file = path.join(
+      config.outboxDir,
+      `${stamp}-${Math.random().toString(36).slice(2, 8)}.eml`,
+    );
     const body = [
       `From: ${config.emailFrom}`,
       `To: ${message.to}`,
@@ -39,6 +51,7 @@ const outbox: Channel = {
       message.text,
     ].join('\n');
     await writeFile(file, body, 'utf8');
+    lastWritten = { file, body };
     log.info({ outbox: file }, 'email written to the development outbox');
   },
 };
@@ -57,9 +70,12 @@ const resendChannel = (apiKey: string): Channel => {
         text: message.text,
         ...(message.html ? { html: message.html } : {}),
       });
-      if (error) throw new Error(`${error.name ?? 'send failed'}: ${error.message ?? 'no reason given'}`);
+      if (error)
+        throw new Error(`${error.name ?? 'send failed'}: ${error.message ?? 'no reason given'}`);
     },
   };
 };
 
-export const emailChannel: Channel = config.resendApiKey ? resendChannel(config.resendApiKey) : outbox;
+export const emailChannel: Channel = config.resendApiKey
+  ? resendChannel(config.resendApiKey)
+  : outbox;

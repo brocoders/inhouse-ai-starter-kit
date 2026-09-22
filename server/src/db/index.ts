@@ -73,7 +73,10 @@ export const db: Db = handle.db;
  * therefore asks the database for the shape it wants (a count as an integer,
  * a timestamp already formatted as text) instead of converting afterwards.
  */
-export async function query<T extends Record<string, unknown>>(statement: SQL, database: Db = db): Promise<T[]> {
+export async function query<T extends Record<string, unknown>>(
+  statement: SQL,
+  database: Db = db,
+): Promise<T[]> {
   const result = (await database.execute(statement)) as unknown as { rows: T[] };
   return result.rows;
 }

@@ -90,7 +90,15 @@ export const app = new Hono<AppEnv>()
     }),
   )
   // Nothing on this server is ever bigger than a file upload.
-  .use('*', bodyLimit({ maxSize: MAX_UPLOAD_BYTES, onError: () => { throw new AppError('validation', 'That was too large to send.'); } }))
+  .use(
+    '*',
+    bodyLimit({
+      maxSize: MAX_UPLOAD_BYTES,
+      onError: () => {
+        throw new AppError('validation', 'That was too large to send.');
+      },
+    }),
+  )
   // In development the screens run on Vite's own port, so they are a different
   // origin and need permission to send the session cookie. In production they
   // are served from here and this does nothing.
@@ -169,7 +177,10 @@ if (existsSync(frontendDir)) {
   app.use('/*', serveStatic({ root: path.relative(process.cwd(), frontendDir) }));
   // Anything else that a browser asked for as a page is the app itself: the
   // router in the browser works out which screen it is.
-  app.get('*', serveStatic({ path: path.join(path.relative(process.cwd(), frontendDir), 'index.html') }));
+  app.get(
+    '*',
+    serveStatic({ path: path.join(path.relative(process.cwd(), frontendDir), 'index.html') }),
+  );
 }
 
 export type AppType = typeof app;

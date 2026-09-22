@@ -45,7 +45,11 @@ export async function enqueue(
  * two workers never collide. That one is only provable against real
  * PostgreSQL, which is what the `TEST_POSTGRES=1` run is for.
  */
-export async function claim(workerId: string, leaseMs: number, database: Db = db): Promise<JobRow | undefined> {
+export async function claim(
+  workerId: string,
+  leaseMs: number,
+  database: Db = db,
+): Promise<JobRow | undefined> {
   const [row] = await database
     .update(jobs)
     .set({
@@ -78,12 +82,23 @@ export async function heartbeat(id: string, leaseMs: number, database: Db = db):
 export async function markDone(id: string, database: Db = db): Promise<void> {
   await database
     .update(jobs)
-    .set({ status: 'done', finishedAt: new Date(), lockedUntil: null, lockedBy: null, lastError: null })
+    .set({
+      status: 'done',
+      finishedAt: new Date(),
+      lockedUntil: null,
+      lockedBy: null,
+      lastError: null,
+    })
     .where(eq(jobs.id, id));
 }
 
 /** Put it back for another go, or write it off if it has had enough. */
-export async function markFailed(job: JobRow, reason: string, backoffMs: number, database: Db = db): Promise<void> {
+export async function markFailed(
+  job: JobRow,
+  reason: string,
+  backoffMs: number,
+  database: Db = db,
+): Promise<void> {
   const exhausted = job.attempts >= job.maxAttempts;
   await database
     .update(jobs)
@@ -102,7 +117,12 @@ export async function markFailed(job: JobRow, reason: string, backoffMs: number,
 export async function releaseExpired(database: Db = db): Promise<number> {
   const rows = await database
     .update(jobs)
-    .set({ status: 'queued', lockedUntil: null, lockedBy: null, lastError: 'the worker stopped mid-run' })
+    .set({
+      status: 'queued',
+      lockedUntil: null,
+      lockedBy: null,
+      lastError: 'the worker stopped mid-run',
+    })
     .where(and(eq(jobs.status, 'running'), lt(jobs.lockedUntil, new Date())))
     .returning({ id: jobs.id });
   return rows.length;

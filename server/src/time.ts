@@ -72,14 +72,25 @@ export function instantOf(day: string, clock = '00:00', timeZone = config.timeZo
   let guess = wanted;
   for (let round = 0; round < 3; round++) {
     const p = readParts(new Date(guess), timeZone);
-    const seen = Date.UTC(p.year ?? 0, (p.month ?? 1) - 1, p.day ?? 1, p.hour ?? 0, p.minute ?? 0, p.second ?? 0);
+    const seen = Date.UTC(
+      p.year ?? 0,
+      (p.month ?? 1) - 1,
+      p.day ?? 1,
+      p.hour ?? 0,
+      p.minute ?? 0,
+      p.second ?? 0,
+    );
     guess = wanted - (seen - guess);
   }
   return new Date(guess);
 }
 
 /** The next time the clock in the app's zone reads `HH:MM`, strictly after `from`. */
-export function nextDailyRun(clock: string, from: Date = new Date(), timeZone = config.timeZone): Date {
+export function nextDailyRun(
+  clock: string,
+  from: Date = new Date(),
+  timeZone = config.timeZone,
+): Date {
   const today = calendarDay(from, timeZone);
   for (const day of [addDays(today, -1), today, addDays(today, 1), addDays(today, 2)]) {
     const at = instantOf(day, clock, timeZone);

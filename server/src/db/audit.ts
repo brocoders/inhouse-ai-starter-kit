@@ -18,7 +18,8 @@ function normalise(value: unknown): unknown {
 }
 
 const same = (a: unknown, b: unknown): boolean =>
-  a === b || (a !== null && b !== null && typeof a === 'object' && JSON.stringify(a) === JSON.stringify(b));
+  a === b ||
+  (a !== null && b !== null && typeof a === 'object' && JSON.stringify(a) === JSON.stringify(b));
 
 /**
  * What changed between two versions of a row. The tracking columns are left

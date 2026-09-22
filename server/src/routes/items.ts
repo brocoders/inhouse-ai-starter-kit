@@ -9,10 +9,27 @@
 // and never repeats or skips a row when somebody adds one meanwhile.
 import { randomUUID } from 'node:crypto';
 import { zValidator } from '@hono/zod-validator';
-import { and, asc, desc, eq, getTableColumns, isNotNull, isNull, lt, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  isNotNull,
+  isNull,
+  lt,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ItemInput, ItemListQuery, ItemPage, ItemPatchInput, type Item } from '../../../shared/schemas.ts';
+import {
+  ItemInput,
+  ItemListQuery,
+  ItemPage,
+  ItemPatchInput,
+  type Item,
+} from '../../../shared/schemas.ts';
 import { requireRole, type AppEnv } from '../auth.ts';
 import { db, type Db } from '../db/index.ts';
 import { recordChange } from '../db/audit.ts';
@@ -60,7 +77,8 @@ function filters(query: z.infer<typeof ItemListQuery>, timeZone?: string): SQL[]
   if (query.due) {
     const today = calendarDay(new Date(), timeZone);
     if (query.due === 'none') where.push(isNull(items.dueOn));
-    if (query.due === 'overdue') where.push(and(isNotNull(items.dueOn), lt(items.dueOn, today)) as SQL);
+    if (query.due === 'overdue')
+      where.push(and(isNotNull(items.dueOn), lt(items.dueOn, today)) as SQL);
     if (query.due === 'week') {
       where.push(sql`${items.dueOn} >= ${today} and ${items.dueOn} <= ${addDays(today, 6)}`);
     }

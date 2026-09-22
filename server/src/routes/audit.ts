@@ -54,18 +54,16 @@ export const auditRoutes = new Hono<AppEnv>().get(
 
     const page = rows.slice(0, query.limit);
     const body: z.infer<typeof AuditPage> = {
-      rows: page.map(
-        (row): AuditEvent => ({
-          id: row.id,
-          at: row.at.toISOString(),
-          actorId: row.actorId,
-          actorName: row.actorName,
-          entity: row.entity,
-          entityId: row.entityId,
-          action: row.action,
-          changes: (row.changes ?? {}) as AuditEvent['changes'],
-        }),
-      ),
+      rows: page.map((row): AuditEvent => ({
+        id: row.id,
+        at: row.at.toISOString(),
+        actorId: row.actorId,
+        actorName: row.actorName,
+        entity: row.entity,
+        entityId: row.entityId,
+        action: row.action,
+        changes: (row.changes ?? {}) as AuditEvent['changes'],
+      })),
       total,
       nextCursor: rows.length > query.limit ? (page.at(-1)?.id ?? null) : null,
     };

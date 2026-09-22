@@ -138,9 +138,13 @@ export const auditLog = pgTable(
     entity: text('entity').notNull(),
     entityId: text('entity_id').notNull(),
     action: text('action', { enum: ['created', 'updated', 'deleted', 'restored'] }).notNull(),
-    changes: jsonb('changes').notNull().default(sql`'{}'::jsonb`),
+    changes: jsonb('changes')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
   },
-  (table) => [index('audit_log_entity_entity_id_at_idx').on(table.entity, table.entityId, table.at.desc())],
+  (table) => [
+    index('audit_log_entity_entity_id_at_idx').on(table.entity, table.entityId, table.at.desc()),
+  ],
 );
 
 // Files ----------------------------------------------------------------------
@@ -166,7 +170,9 @@ export const jobs = pgTable(
   {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
-    payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
+    payload: jsonb('payload')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     runAt: timestamp('run_at').notNull().defaultNow(),
     attempts: integer('attempts').notNull().default(0),
     maxAttempts: integer('max_attempts').notNull().default(5),
@@ -200,7 +206,9 @@ export const notifications = pgTable(
     createdAt: timestamp('created_at').notNull().defaultNow(),
     sentAt: timestamp('sent_at'),
   },
-  (table) => [index('notifications_status_created_at_idx').on(table.status, table.createdAt.desc())],
+  (table) => [
+    index('notifications_status_created_at_idx').on(table.status, table.createdAt.desc()),
+  ],
 );
 
 // One row per recurring job, so a restart picks up where the last one left off

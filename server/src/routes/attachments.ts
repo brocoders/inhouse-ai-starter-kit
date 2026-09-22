@@ -40,7 +40,10 @@ function toAttachment(row: typeof attachments.$inferSelect): Attachment {
 }
 
 const idParam = z.object({ id: z.string().min(1) });
-const listQuery = z.object({ entity: z.string().min(1).max(80), entityId: z.string().min(1).max(80) });
+const listQuery = z.object({
+  entity: z.string().min(1).max(80),
+  entityId: z.string().min(1).max(80),
+});
 
 export const attachmentsRoutes = new Hono<AppEnv>()
   .get('/', requireRole('viewer'), zValidator('query', listQuery), async (c) => {
@@ -63,11 +66,16 @@ export const attachmentsRoutes = new Hono<AppEnv>()
         entityId: 'required',
       });
     }
-    if (!(file instanceof File)) throw new AppError('validation', 'No file arrived.', { file: 'required' });
+    if (!(file instanceof File))
+      throw new AppError('validation', 'No file arrived.', { file: 'required' });
     if (file.size > MAX_UPLOAD_BYTES) {
-      throw new AppError('validation', 'That file is larger than 20 MB, which is the most this app accepts.', {
-        file: 'too large',
-      });
+      throw new AppError(
+        'validation',
+        'That file is larger than 20 MB, which is the most this app accepts.',
+        {
+          file: 'too large',
+        },
+      );
     }
 
     const id = randomUUID();
@@ -102,7 +110,11 @@ export const attachmentsRoutes = new Hono<AppEnv>()
     return c.json(toAttachment(saved), 201);
   })
   .get('/:id', requireRole('viewer'), zValidator('param', idParam), async (c) => {
-    const [row] = await db.select().from(attachments).where(eq(attachments.id, c.req.valid('param').id)).limit(1);
+    const [row] = await db
+      .select()
+      .from(attachments)
+      .where(eq(attachments.id, c.req.valid('param').id))
+      .limit(1);
     if (!row) throw notFound('That file');
     try {
       await stat(filePath(row.id));

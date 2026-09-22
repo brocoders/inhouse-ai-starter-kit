@@ -57,7 +57,11 @@ export const log = pino({
           err?: { message?: string };
         };
         const message =
-          typeof first === 'string' ? first : typeof second === 'string' ? second : (context.err?.message ?? 'error');
+          typeof first === 'string'
+            ? first
+            : typeof second === 'string'
+              ? second
+              : (context.err?.message ?? 'error');
         recordError(message, context.requestId ?? null);
       }
       return method.apply(this, args as Parameters<typeof method>);

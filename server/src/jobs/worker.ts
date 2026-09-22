@@ -13,7 +13,10 @@ import { claim, heartbeat, markDone, markFailed, releaseExpired } from './queue.
 import { dueSchedules } from './schedules.ts';
 
 export type JobContext = { jobId: string; attempt: number; log: typeof log };
-export type JobHandler = (payload: Record<string, unknown>, context: JobContext) => Promise<void> | void;
+export type JobHandler = (
+  payload: Record<string, unknown>,
+  context: JobContext,
+) => Promise<void> | void;
 
 const handlers = new Map<string, JobHandler>();
 
@@ -48,18 +51,30 @@ export function workerHeartbeat(): Date | undefined {
   return lastTick;
 }
 
-async function run(job: JobRow, options: Required<Omit<WorkerOptions, 'database'>>, database: Db): Promise<void> {
+async function run(
+  job: JobRow,
+  options: Required<Omit<WorkerOptions, 'database'>>,
+  database: Db,
+): Promise<void> {
   const handler = handlers.get(job.name);
   if (!handler) {
-    await markFailed(job, `no handler is registered for "${job.name}"`, backoffFor(job.attempts, options.backoffMs), database);
+    await markFailed(
+      job,
+      `no handler is registered for "${job.name}"`,
+      backoffFor(job.attempts, options.backoffMs),
+      database,
+    );
     log.error({ jobId: job.id, job: job.name }, `job has no handler: ${job.name}`);
     return;
   }
   // A job that outlives its lease would be picked up twice, so push the lease
   // out while it is still working.
-  const keepAlive = setInterval(() => {
-    void heartbeat(job.id, options.leaseMs, database).catch(() => {});
-  }, Math.max(1_000, Math.floor(options.leaseMs / 3)));
+  const keepAlive = setInterval(
+    () => {
+      void heartbeat(job.id, options.leaseMs, database).catch(() => {});
+    },
+    Math.max(1_000, Math.floor(options.leaseMs / 3)),
+  );
   keepAlive.unref?.();
   try {
     await handler((job.payload ?? {}) as Record<string, unknown>, {
