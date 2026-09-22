@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+dist
+frontend/src/routeTree.gen.ts
+server/drizzle/meta
+docs/site/dist
+.shots

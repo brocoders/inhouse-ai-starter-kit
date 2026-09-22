@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "../dist",
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "../scripts/**/*.ts", "../shared/**/*.ts"]
+}

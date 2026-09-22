@@ -1,0 +1,80 @@
+{
+  "name": "inhouse-ai-starter-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "dev": "node --run dev:server & node --run dev:frontend & wait",
+    "dev:server": "node --watch --env-file-if-exists=.env server/src/main.ts",
+    "dev:frontend": "vite --config frontend/vite.config.ts",
+    "build": "node --run build:server && node --run build:frontend",
+    "build:server": "tsc -p server/tsconfig.json",
+    "build:frontend": "tsc -p frontend/tsconfig.json --noEmit && vite build --config frontend/vite.config.ts",
+    "start": "node --env-file-if-exists=.env dist/server/main.js",
+    "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p frontend/tsconfig.json --noEmit",
+    "test": "node --test --test-concurrency=2 'server/**/*.test.ts' 'scripts/**/*.test.mjs'",
+    "test:postgres": "TEST_POSTGRES=1 node --test 'server/**/*.test.ts'",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "node scripts/check-repo.mjs && node --run format:check && node --run typecheck && node --run test && node --run build:frontend && node scripts/check-frontend.mjs",
+    "db:generate": "drizzle-kit generate --config server/drizzle.config.ts",
+    "db:migrate": "node --env-file-if-exists=.env server/src/db/migrate-cli.ts",
+    "db:seed": "node --env-file-if-exists=.env scripts/seed.ts",
+    "db:copy": "node scripts/db-copy.mjs",
+    "shots": "node scripts/shots.ts",
+    "release": "node deploy/release.mjs",
+    "docs:dev": "pnpm --dir docs/site dev",
+    "docs:build": "pnpm --dir docs/site build"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.8.0",
+    "@hono/node-server": "^2.1.1",
+    "@hono/zod-validator": "^0.9.1",
+    "@tanstack/react-query": "^5.103.2",
+    "@tanstack/react-router": "^1.170.38",
+    "@tanstack/react-virtual": "^3.14.13",
+    "better-auth": "1.7.5",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.3.0",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "0.45.3",
+    "hono": "^4.13.8",
+    "lucide-react": "^1.47.0",
+    "pg": "^8.23.0",
+    "pino": "^10.3.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "recharts": "^3.10.1",
+    "resend": "^6.28.1",
+    "sonner": "^2.0.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/router-plugin": "^1.168.40",
+    "@types/node": "^24.13.4",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "drizzle-kit": "^0.31.11",
+    "playwright": "^1.63.0",
+    "prettier": "^3.9.8",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "shadcn": "^4.21.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.0",
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "^1.3.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
