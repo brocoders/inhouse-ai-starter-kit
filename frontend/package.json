@@ -1,0 +1,6 @@
+{
+  "name": "@inhouse/frontend",
+  "private": true,
+  "type": "module",
+  "//": "Not a package: nothing installs from here and nothing should be listed here. The shadcn CLI refuses to run in a folder without a package.json, and components.json has to sit beside the code it describes, so this file exists to make `pnpm exec shadcn add` work from frontend/. Dependencies belong in the repository's own package.json."
+}
