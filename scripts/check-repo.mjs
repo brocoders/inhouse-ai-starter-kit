@@ -19,7 +19,9 @@ const LINE_BUDGETS = { 'AGENTS.md': 150, 'CLAUDE.md': 150 };
 const RULE_LINE_BUDGET = 60; // each .claude/rules/*.md
 const SKILL_LINE_BUDGET = 80; // each SKILL.md body
 
-const SECRETS = [
+// Exported so the write hook can refuse a secret before it reaches the disk,
+// rather than only at the next check. One list, one home.
+export const SECRETS = [
   ['private key', /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/],
   ['GitHub token', /\bgh[pousr]_[A-Za-z0-9]{20,}\b|\bgithub_pat_[A-Za-z0-9_]{40,}\b/],
   ['Telegram bot token', /\b\d{8,10}:[A-Za-z0-9_-]{35}\b/],
@@ -32,9 +34,16 @@ const SECRETS = [
 ];
 const IPV4 = /\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b/g;
 const ALLOWED_IP = (a, b) =>
-  a === 10 || a === 127 || a === 0 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) ||
-  (a === 169 && b === 254) || (a === 192 && b === 0) || (a === 198 && (b === 51 || b === 18 || b === 19)) ||
-  (a === 203 && b === 0) || a >= 224;
+  a === 10 ||
+  a === 127 ||
+  a === 0 ||
+  (a === 192 && b === 168) ||
+  (a === 172 && b >= 16 && b <= 31) ||
+  (a === 169 && b === 254) ||
+  (a === 192 && b === 0) ||
+  (a === 198 && (b === 51 || b === 18 || b === 19)) ||
+  (a === 203 && b === 0) ||
+  a >= 224;
 const BINARY = /\.(png|jpg|jpeg|gif|webp|ico|woff2?|ttf|pdf|zip|gz|lock)$/i;
 const SKIP = [/^pnpm-lock\.yaml$/, /^node_modules\//, /^dist\//];
 
@@ -63,35 +72,48 @@ function checkBudgets(rel, text, errors) {
   const lines = text.split('\n').length;
   const base = path.basename(rel);
   if (LINE_BUDGETS[base] && rel === base && lines > LINE_BUDGETS[base]) {
-    errors.push(`${rel}: ${lines} lines, budget ${LINE_BUDGETS[base]} — move procedures to skills, history to docs/`);
+    errors.push(
+      `${rel}: ${lines} lines, budget ${LINE_BUDGETS[base]} — move procedures to skills, history to docs/`,
+    );
   }
   if (/^\.claude\/rules\/[^/]+\.md$/.test(rel) && lines > RULE_LINE_BUDGET) {
     errors.push(`${rel}: ${lines} lines, budget ${RULE_LINE_BUDGET}`);
   }
   if (/^\.claude\/skills\/[^/]+\/SKILL\.md$/.test(rel) && lines > SKILL_LINE_BUDGET) {
-    errors.push(`${rel}: ${lines} lines, budget ${SKILL_LINE_BUDGET} — link a reference file instead`);
+    errors.push(
+      `${rel}: ${lines} lines, budget ${SKILL_LINE_BUDGET} — link a reference file instead`,
+    );
   }
 }
 
-const args = process.argv.slice(2);
-const files = (args.length ? args.map((f) => path.relative(ROOT, path.resolve(f))) : trackedFiles()).filter(
-  (rel) => !SKIP.some((re) => re.test(rel)) && !BINARY.test(rel) && existsSync(path.join(ROOT, rel)),
-);
-const errors = [];
-for (const rel of files) {
-  let text;
-  try {
-    text = readFileSync(path.join(ROOT, rel), 'utf8');
-  } catch {
-    continue;
+// Only when run as a command. Importing this file — the write hook does, for
+// the secret patterns — must not walk the repository.
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.meta.filename)) {
+  const args = process.argv.slice(2);
+  const files = (
+    args.length ? args.map((f) => path.relative(ROOT, path.resolve(f))) : trackedFiles()
+  ).filter(
+    (rel) =>
+      !SKIP.some((re) => re.test(rel)) && !BINARY.test(rel) && existsSync(path.join(ROOT, rel)),
+  );
+  const errors = [];
+  for (const rel of files) {
+    let text;
+    try {
+      text = readFileSync(path.join(ROOT, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    if (text.includes('\0')) continue;
+    checkSecrets(rel, text, errors);
+    checkBudgets(rel, text, errors);
   }
-  if (text.includes('\0')) continue;
-  checkSecrets(rel, text, errors);
-  checkBudgets(rel, text, errors);
+  if (errors.length) {
+    console.error(errors.join('\n'));
+    console.error(
+      `\n${errors.length} problem(s). Nothing was echoed; open the file to see the value.`,
+    );
+    process.exit(2);
+  }
+  console.log(`check-repo: ${files.length} file(s) clean`);
 }
-if (errors.length) {
-  console.error(errors.join('\n'));
-  console.error(`\n${errors.length} problem(s). Nothing was echoed; open the file to see the value.`);
-  process.exit(2);
-}
-console.log(`check-repo: ${files.length} file(s) clean`);
