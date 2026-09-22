@@ -42,11 +42,26 @@ describe('the typed client the screens use', () => {
     assert.equal((await one.json()).id, created.id);
   });
 
-  it('knows who is signed in', async () => {
+  it('knows who is signed in, and can correct the name', async () => {
     const owner = await makeUser('owner', { name: 'The Owner' });
     actAs(owner);
     const me: Me = await (await client.api.me.$get()).json();
     assert.equal(me.name, 'The Owner');
     assert.equal(me.role, 'owner');
+
+    const renamed: Me = await (await client.api.me.$patch({ json: { name: 'The Boss' } })).json();
+    assert.equal(renamed.name, 'The Boss');
+  });
+
+  it('invites somebody by posting to the list of people', async () => {
+    actAs(await makeUser('owner'));
+    const invited = await client.api.users.$post({
+      json: { email: 'new@example.com', name: 'New Person', role: 'member' },
+    });
+    assert.equal(invited.status, 201);
+    assert.equal((await invited.json()).role, 'member');
+
+    const everybody = await (await client.api.users.$get()).json();
+    assert.ok(everybody.some((person) => person.email === 'new@example.com'));
   });
 });

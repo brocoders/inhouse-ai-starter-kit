@@ -16,6 +16,7 @@ import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { csrf } from 'hono/csrf';
+import { HTTPException } from 'hono/http-exception';
 import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import { ZodError } from 'zod';
@@ -145,6 +146,22 @@ export const app = new Hono<AppEnv>()
         fields,
       };
       return c.json(body, 400);
+    }
+    // Hono's own middleware refuses some requests by throwing — a form posted
+    // from another website is the one that matters here. That is a refusal,
+    // not a crash, so it keeps its status instead of being reported as a
+    // fault at our end.
+    if (error instanceof HTTPException) {
+      const body: ApiError = {
+        kind:
+          error.status === 403 ? 'forbidden' : error.status === 404 ? 'not_found' : 'validation',
+        message:
+          error.status === 403
+            ? 'That request did not come from this app, so it was refused.'
+            : error.message || 'That request could not be accepted.',
+        requestId,
+      };
+      return c.json(body, error.status);
     }
     // Anything else is a bug. The person gets a sentence; the stack goes to
     // the log, where the request id ties it to the line above.

@@ -53,7 +53,7 @@ describe('what each role may do', () => {
     assert.equal((await call('DELETE', `/api/items/${id}`)).status, 403);
     assert.equal(
       (
-        await call('POST', '/api/users/invite', {
+        await call('POST', '/api/users', {
           email: 'x@example.com',
           name: 'X',
           role: 'viewer',
@@ -100,6 +100,20 @@ describe('what each role may do', () => {
     assert.equal(me.timeZone, 'UTC');
     assert.equal(me.locale, 'en-US');
   });
+
+  it('lets anybody correct their own name, and nothing else about themselves', async () => {
+    actAs(viewer);
+    const changed = await call('PATCH', '/api/me', { name: '  Vera Viewer  ' });
+    assert.equal(changed.status, 200);
+    assert.equal((await json<Me>(changed)).name, 'Vera Viewer');
+    assert.equal((await json<Me>(await call('GET', '/api/me'))).name, 'Vera Viewer');
+
+    // A role sent along with it is not part of the shape and changes nothing.
+    await call('PATCH', '/api/me', { name: 'Vera', role: 'owner' });
+    assert.equal((await json<Me>(await call('GET', '/api/me'))).role, 'viewer');
+
+    assert.equal((await call('PATCH', '/api/me', { name: '   ' })).status, 400);
+  });
 });
 
 describe('the last owner', () => {
@@ -145,7 +159,7 @@ describe('the last owner', () => {
 describe('getting in', () => {
   it('invites somebody and signs them in through the link they were sent', async () => {
     actAs(owner);
-    const invited = await call('POST', '/api/users/invite', {
+    const invited = await call('POST', '/api/users', {
       email: 'New.Person@example.com',
       name: 'New Person',
       role: 'member',
@@ -175,7 +189,7 @@ describe('getting in', () => {
 
   it('refuses a second invitation to the same address', async () => {
     actAs(owner);
-    const again = await call('POST', '/api/users/invite', {
+    const again = await call('POST', '/api/users', {
       email: member.email,
       name: 'Someone',
       role: 'viewer',

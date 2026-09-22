@@ -1,7 +1,7 @@
 // The people who may use this app, and how they get in.
 //
 // The invitation flow, end to end:
-//   1. An owner posts an address, a name and a role to `/api/users/invite`.
+//   1. An owner posts an address, a name and a role to `/api/users`.
 //   2. We create the user row ourselves — active, with a role and no password.
 //   3. We ask Better Auth for a magic link for that address. The magic-link
 //      plugin is configured with `disableSignUp: true`, so the link only ever
@@ -16,7 +16,14 @@ import { zValidator } from '@hono/zod-validator';
 import { and, asc, eq, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { InviteInput, Role, UpdateUserInput, type Me, type User } from '../../../shared/schemas.ts';
+import {
+  InviteInput,
+  Role,
+  UpdateMeInput,
+  UpdateUserInput,
+  type Me,
+  type User,
+} from '../../../shared/schemas.ts';
 import { auth, requireRole, type AppEnv } from '../auth.ts';
 import { config } from '../config.ts';
 import { db } from '../db/index.ts';
@@ -46,78 +53,92 @@ async function activeOwnersOtherThan(id: string): Promise<number> {
   return rows.length;
 }
 
+function toMe(row: typeof user.$inferSelect): Me {
+  return {
+    ...toUser(row),
+    locale: row.locale ?? config.locale,
+    timeZone: row.timeZone ?? config.timeZone,
+  };
+}
+
+async function readUser(id: string): Promise<typeof user.$inferSelect> {
+  const [row] = await db.select().from(user).where(eq(user.id, id)).limit(1);
+  if (!row) throw notFound('That person');
+  return row;
+}
+
 export const usersRoutes = new Hono<AppEnv>()
-  .get('/me', (c) => {
-    const signedIn = c.get('user');
-    const me: Me = {
-      id: signedIn.id,
-      name: signedIn.name,
-      email: signedIn.email,
-      role: signedIn.role,
-      active: signedIn.active,
-      lastSeenAt: iso(signedIn.lastSeenAt),
-      createdAt: signedIn.createdAt.toISOString(),
-      locale: signedIn.locale,
-      timeZone: signedIn.timeZone,
-    };
-    return c.json(me);
+  .get('/me', async (c) => c.json(toMe(await readUser(c.get('user').id))))
+  // People may correct their own name. Everything else about an account —
+  // the role, whether it still works — belongs to an owner.
+  .patch('/me', zValidator('json', UpdateMeInput, orFail), async (c) => {
+    const input = c.req.valid('json');
+    const actor = c.get('user');
+    const before = await readUser(actor.id);
+    if (input.name !== undefined) {
+      await db
+        .update(user)
+        .set({ name: input.name, updatedAt: new Date() })
+        .where(eq(user.id, actor.id));
+    }
+    const after = await readUser(actor.id);
+    await recordChange(db, {
+      actorId: actor.id,
+      entity: 'user',
+      entityId: actor.id,
+      action: 'updated',
+      before: toUser(before),
+      after: toUser(after),
+    });
+    return c.json(toMe(after));
   })
   .get('/users', requireRole('member'), async (c) => {
     const rows = await db.select().from(user).orderBy(asc(user.name));
     return c.json(rows.map(toUser));
   })
-  .post(
-    '/users/invite',
-    requireRole('owner'),
-    zValidator('json', InviteInput, orFail),
-    async (c) => {
-      const input = c.req.valid('json');
-      const email = input.email.toLowerCase();
-      const [existing] = await db.select().from(user).where(eq(user.email, email)).limit(1);
-      if (existing) {
-        throw new AppError(
-          'conflict',
-          'Somebody with that e-mail address is already on the list.',
-          {
-            email: 'already invited',
-          },
-        );
-      }
-
-      const now = new Date();
-      const row: typeof user.$inferInsert = {
-        id: randomUUID(),
-        name: input.name,
-        email,
-        emailVerified: false,
-        role: input.role,
-        active: true,
-        locale: config.locale,
-        timeZone: config.timeZone,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.insert(user).values(row);
-      const [created] = await db.select().from(user).where(eq(user.id, row.id)).limit(1);
-      if (!created) throw notFound('The person you just invited');
-
-      await recordChange(db, {
-        actorId: c.get('user').id,
-        entity: 'user',
-        entityId: created.id,
-        action: 'created',
-        after: toUser(created),
+  .post('/users', requireRole('owner'), zValidator('json', InviteInput, orFail), async (c) => {
+    const input = c.req.valid('json');
+    const email = input.email.toLowerCase();
+    const [existing] = await db.select().from(user).where(eq(user.email, email)).limit(1);
+    if (existing) {
+      throw new AppError('conflict', 'Somebody with that e-mail address is already on the list.', {
+        email: 'already invited',
       });
+    }
 
-      // Better Auth mints the token, stores it and calls our `sendMagicLink`.
-      await auth.api.signInMagicLink({
-        body: { email, callbackURL: '/' },
-        headers: c.req.raw.headers,
-      });
+    const now = new Date();
+    const row: typeof user.$inferInsert = {
+      id: randomUUID(),
+      name: input.name,
+      email,
+      emailVerified: false,
+      role: input.role,
+      active: true,
+      locale: config.locale,
+      timeZone: config.timeZone,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await db.insert(user).values(row);
+    const [created] = await db.select().from(user).where(eq(user.id, row.id)).limit(1);
+    if (!created) throw notFound('The person you just invited');
 
-      return c.json(toUser(created), 201);
-    },
-  )
+    await recordChange(db, {
+      actorId: c.get('user').id,
+      entity: 'user',
+      entityId: created.id,
+      action: 'created',
+      after: toUser(created),
+    });
+
+    // Better Auth mints the token, stores it and calls our `sendMagicLink`.
+    await auth.api.signInMagicLink({
+      body: { email, callbackURL: '/' },
+      headers: c.req.raw.headers,
+    });
+
+    return c.json(toUser(created), 201);
+  })
   .patch(
     '/users/:id',
     requireRole('owner'),

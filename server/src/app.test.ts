@@ -82,6 +82,30 @@ describe('the headers every answer carries', () => {
   });
 });
 
+describe('a request from another website', () => {
+  it('refuses a form posted from somewhere else, and says so as a refusal', async () => {
+    actAs(await makeUser('member'));
+    const form = new FormData();
+    form.set('entity', 'items');
+    form.set('entityId', 'x');
+    form.set('file', new File(['a'], 'a.txt', { type: 'text/plain' }));
+    const response = await app.request('/api/attachments', {
+      method: 'POST',
+      body: form,
+      headers: { Origin: 'https://somewhere-else.example' },
+    });
+    assert.equal(response.status, 403);
+    const body = await json<ApiError>(response);
+    assert.equal(body.kind, 'forbidden');
+    assert.match(body.message, /did not come from this app/);
+  });
+
+  // A cross-site request carrying JSON is not a form, so a browser asks
+  // permission before sending it at all — and this server grants that
+  // permission to nobody but itself. The check that matters is the one above:
+  // a form is the request a browser will send across sites without asking.
+});
+
 describe('handing the built screens to a browser', () => {
   // A stand-in for what `pnpm build` leaves behind: a shell, a hashed bundle,
   // a service worker and a manifest.

@@ -55,6 +55,11 @@ export const InviteInput = z.object({
 });
 export const UpdateUserInput = z.object({ role: Role.optional(), active: z.boolean().optional() });
 
+// What people may change about themselves. Their role and whether they are
+// still active are not on this list: those are an owner's to decide.
+export const UpdateMeInput = z.object({ name: z.string().trim().min(1).max(120).optional() });
+export type UpdateMeInput = z.infer<typeof UpdateMeInput>;
+
 // The example entity ---------------------------------------------------------
 // `items` is the worked example every new app copies and then deletes. One
 // title, a status, an optional due date and an optional owner: enough to show
