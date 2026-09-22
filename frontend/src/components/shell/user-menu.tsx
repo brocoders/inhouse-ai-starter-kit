@@ -14,6 +14,7 @@ import {
 import { signOut } from '@/lib/auth';
 import { t } from '@/lib/i18n';
 import { useTheme, type ThemeChoice } from '@/lib/theme';
+import { cn } from '@/lib/utils';
 
 /** The initials on the avatar; a name nobody set falls back to a full stop. */
 function initials(name: string): string {
@@ -39,14 +40,17 @@ const themeOptions: Array<{
  * Who is signed in, and the three things that belong to them rather than to a
  * screen: their own record, how the app looks, and the way out.
  */
-export function UserMenu({ me }: { me: Me | undefined }) {
+export function UserMenu({ me, className }: { me: Me | undefined; className?: string }) {
   const theme = useTheme();
   if (!me) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" className="h-auto w-full justify-start gap-2 px-2 py-1.5" />
+          <Button
+            variant="ghost"
+            className={cn('h-auto max-w-full justify-start gap-2 px-2 py-1.5', className)}
+          />
         }
       >
         <Avatar className="size-7">

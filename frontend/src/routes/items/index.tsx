@@ -18,6 +18,7 @@ import {
 } from '@/components/inhouse';
 import { api } from '@/lib/api';
 import { canEdit, useMe } from '@/lib/auth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { formatDate, formatNumber, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { isOverdue, statusLabel, statusTone } from '@/lib/items';
@@ -49,6 +50,10 @@ function Items() {
   const me = useMe();
   const mayEdit = canEdit(me.data?.role);
   const todayDay = today();
+  // A row is one line on a desktop and two on a phone. The virtualiser holds
+  // the list's height at this estimate until a row has been measured, so a
+  // single number for both widths leaves the card visibly too tall on one.
+  const isMobile = useIsMobile();
 
   // The text box answers every keystroke, the address and the server every
   // third of a second: typing must never feel like it is waiting for a round
@@ -185,7 +190,7 @@ function Items() {
       <PagedList
         items={rows}
         keyOf={(item) => item.id}
-        estimateSize={64}
+        estimateSize={isMobile ? 64 : 44}
         loading={list.isPending}
         hasMore={Boolean(list.hasNextPage)}
         loadingMore={list.isFetchingNextPage}

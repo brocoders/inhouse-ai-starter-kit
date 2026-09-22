@@ -24,7 +24,7 @@ export function CategoryBar({ segments, className }: { segments: Segment[]; clas
             className="h-full"
             style={{
               width: `${total ? (segment.value / total) * 100 : 0}%`,
-              background: `var(--color-chart-${segment.tone ?? (index % 6) + 1})`,
+              background: `var(--chart-${segment.tone ?? (index % 6) + 1})`,
             }}
             title={`${segment.label} · ${percent(segment.value)}`}
           />
@@ -35,7 +35,7 @@ export function CategoryBar({ segments, className }: { segments: Segment[]; clas
           <li key={segment.label} className="flex items-center gap-1.5">
             <span
               className="size-2 rounded-full"
-              style={{ background: `var(--color-chart-${segment.tone ?? (index % 6) + 1})` }}
+              style={{ background: `var(--chart-${segment.tone ?? (index % 6) + 1})` }}
             />
             {segment.link ? (
               <Link {...segment.link} className="hover:underline">

@@ -117,10 +117,10 @@ function Status({ status }: { status: OpsStatus }) {
                   {job.name}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {t('health.queued')} {formatNumber(job.queued)}
+                  {t('health.queued', { count: formatNumber(job.queued) })}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {t('health.running')} {formatNumber(job.running)}
+                  {t('health.running', { count: formatNumber(job.running) })}
                 </span>
                 <span
                   className={
@@ -129,7 +129,7 @@ function Status({ status }: { status: OpsStatus }) {
                       : 'text-xs text-muted-foreground'
                   }
                 >
-                  {t('health.failed')} {formatNumber(job.failed24h)}
+                  {t('health.failed', { count: formatNumber(job.failed24h) })}
                 </span>
                 <span className="text-xs whitespace-nowrap text-muted-foreground sm:w-32 sm:text-right">
                   {job.lastSucceededAt ? formatRelative(job.lastSucceededAt) : t('health.never')}
@@ -173,8 +173,12 @@ function Status({ status }: { status: OpsStatus }) {
               <div className="space-y-2">
                 <CategoryBar
                   segments={[
-                    { label: 'Used', value: disk.totalBytes - disk.freeBytes, tone: 5 },
-                    { label: 'Free', value: disk.freeBytes, tone: 2 },
+                    {
+                      label: t('health.diskUsed'),
+                      value: disk.totalBytes - disk.freeBytes,
+                      tone: 1,
+                    },
+                    { label: t('health.diskFreeLabel'), value: disk.freeBytes, tone: 5 },
                   ]}
                 />
                 <p className="text-xs text-muted-foreground">

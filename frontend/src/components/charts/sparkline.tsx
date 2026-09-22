@@ -8,7 +8,7 @@ import { Line, LineChart, ResponsiveContainer } from 'recharts';
 export default function Sparkline({
   points,
   height = 36,
-  tone = 'var(--color-primary)',
+  tone = 'var(--primary)',
 }: {
   points: number[];
   height?: number;

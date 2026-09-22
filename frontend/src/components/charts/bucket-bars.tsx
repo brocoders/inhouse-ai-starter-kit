@@ -21,20 +21,20 @@ export default function BucketBars({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={buckets} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
-        <CartesianGrid vertical={false} stroke="var(--color-border)" strokeDasharray="3 3" />
+        <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
         <XAxis
           dataKey="label"
           axisLine={false}
           tickLine={false}
-          tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
+          tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
           interval="preserveStartEnd"
           minTickGap={16}
         />
         <Tooltip
-          cursor={{ fill: 'var(--color-muted)' }}
+          cursor={{ fill: 'var(--muted)' }}
           contentStyle={{
-            background: 'var(--color-card)',
-            border: '1px solid var(--color-border)',
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             fontSize: 12,
           }}
@@ -42,11 +42,7 @@ export default function BucketBars({
         />
         <Bar dataKey="value" radius={4} maxBarSize={28}>
           {buckets.map((bucket) => (
-            <Cell
-              key={bucket.label}
-              fill="var(--color-primary)"
-              fillOpacity={bucket.open ? 0.35 : 1}
-            />
+            <Cell key={bucket.label} fill="var(--primary)" fillOpacity={bucket.open ? 0.35 : 1} />
           ))}
         </Bar>
       </BarChart>

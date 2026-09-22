@@ -104,7 +104,7 @@ function makeItems(): Item[] {
       assigneeId: assignee?.id ?? null,
       assigneeName: assignee?.name ?? null,
       createdAt: iso(-((n % 30) + 1)),
-      updatedAt: iso(-((n % 9) * 0.3)),
+      updatedAt: iso(-((n * 17) % 56) - 0.2),
       createdBy: users[n % 3]!.id,
       updatedBy: users[(n + 1) % 3]!.id,
     });

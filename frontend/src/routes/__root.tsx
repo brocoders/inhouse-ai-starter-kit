@@ -92,7 +92,7 @@ function Shell() {
           role={person.role}
           footer={
             <Suspense fallback={<div className="h-10" />}>
-              <UserMenu me={person} />
+              <UserMenu me={person} className="w-full" />
             </Suspense>
           }
         />

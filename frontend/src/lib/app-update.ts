@@ -65,7 +65,9 @@ function watch(target: ServiceWorkerRegistration): void {
  * stops the watching, for React's own tidying.
  */
 export function startUpdateWatch(): () => void {
-  if (!('serviceWorker' in navigator)) return () => {};
+  // There is no worker in development — the file does not exist and the dev
+  // server answers with the page, which the browser refuses as a script.
+  if (import.meta.env.DEV || !('serviceWorker' in navigator)) return () => {};
   if (!registration) {
     void navigator.serviceWorker
       .register('/sw.js', { scope: '/' })

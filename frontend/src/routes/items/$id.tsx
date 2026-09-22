@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -18,7 +18,7 @@ import {
 import { ItemForm } from '@/components/items/item-form';
 import { api } from '@/lib/api';
 import { canEdit, isOwner, useMe } from '@/lib/auth';
-import { formatBytes, formatDateTime, today } from '@/lib/format';
+import { formatBytes, formatDate, formatDateTime, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { fieldName, fieldValue, statusLabel, statusTone } from '@/lib/items';
 
@@ -32,6 +32,7 @@ function ItemPage() {
   const queryClient = useQueryClient();
   const me = useMe();
   const [editing, setEditing] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const item = useQuery({
     queryKey: ['items', id],
@@ -135,7 +136,7 @@ function ItemPage() {
             <dl className="grid gap-4 sm:grid-cols-3">
               <Detail
                 label={t('items.dueOn')}
-                value={record.dueOn ? formatDateTime(record.dueOn) : '—'}
+                value={record.dueOn ? formatDate(record.dueOn) : '—'}
               />
               <Detail
                 label={t('items.assignee')}
@@ -178,8 +179,12 @@ function ItemPage() {
             <p className="text-sm text-muted-foreground">{t('items.attachmentsEmpty')}</p>
           )}
           {mayEdit && (
-            <label className="inline-flex">
+            <>
+              {/* A file input styled as a button is a label around a hidden
+                  input, and Base UI's Button refuses to be anything but a real
+                  <button>. So the button opens the picker instead. */}
               <input
+                ref={fileInput}
                 type="file"
                 className="sr-only"
                 onChange={async (event) => {
@@ -194,19 +199,19 @@ function ItemPage() {
                     credentials: 'same-origin',
                     body,
                   });
+                  event.target.value = '';
                   if (!response.ok) {
                     toast.error(t('error.title'));
                     return;
                   }
                   await queryClient.invalidateQueries({ queryKey: ['attachments'] });
-                  event.target.value = '';
                 }}
               />
-              <Button size="sm" variant="outline" render={<span />}>
+              <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
                 <Upload aria-hidden />
                 {t('items.addFile')}
               </Button>
-            </label>
+            </>
           )}
         </CardContent>
       </Card>

@@ -109,14 +109,18 @@ function People() {
                       {t(`role.${person.role}`)}
                     </span>
                   )}
-                  {owner && person.id !== me.data?.id && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void change(person.id, { active: !person.active })}
-                    >
-                      {person.active ? t('people.deactivate') : t('people.activate')}
-                    </Button>
+                  {owner && (
+                    <span className="sm:w-24 sm:text-right">
+                      {person.id !== me.data?.id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void change(person.id, { active: !person.active })}
+                        >
+                          {person.active ? t('people.deactivate') : t('people.activate')}
+                        </Button>
+                      )}
+                    </span>
                   )}
                 </li>
               ))}
