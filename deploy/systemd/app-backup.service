@@ -1,6 +1,8 @@
-; Template. deploy/server-setup.sh writes this out with __APP__ replaced by the
-; application's name, and every release copies it again from the release being
-; deployed, so this file in Git stays the only copy worth reading.
+; Template, and the readable copy. deploy/server-setup.sh writes this file out
+; with __APP__ replaced by the application's name; it arrives on a fresh machine
+; over SSH on its own, so it cannot read this file and carries the same text
+; inline. Change one, change the other — and re-run server-setup.sh, which is
+; safe to run again and rewrites both units.
 ;
 ; Installed as /etc/systemd/system/__APP__-backup.service.
 

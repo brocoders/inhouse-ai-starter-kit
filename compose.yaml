@@ -46,12 +46,16 @@ services:
     # node -e, not wget or curl: node:24-slim has neither, and installing one
     # only so the health check can run adds a package to the attack surface for
     # the sake of a line that Node already does natively.
+    #
+    # The JavaScript is in quotes because it contains "? " and ": ", which YAML
+    # reads as a mapping if the line is left bare — the check then becomes a
+    # nested object, Docker rejects it, and the app has no health check at all.
     healthcheck:
       test:
         - CMD
         - node
         - -e
-        - fetch('http://127.0.0.1:3000/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))
+        - "fetch('http://127.0.0.1:3000/health/ready').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 15s
       timeout: 5s
       retries: 5

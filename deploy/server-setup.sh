@@ -232,23 +232,23 @@ fi
 
 step "the nightly backup"
 # This script arrives over SSH on its own — the repository is not on the machine
-# yet — so it cannot copy deploy/backup.sh in. It installs a placeholder that
-# exits cleanly, and every release copies the real deploy/backup.sh and the two
-# unit templates from deploy/systemd/ over it. One copy of the truth, in Git.
-if [ -x /usr/local/bin/"$app"-backup ] &&
-	! head -3 /usr/local/bin/"$app"-backup | grep -q 'Placeholder written by'; then
-	say "already done — the real backup script is installed"
-else
-	cat >/usr/local/bin/"$app"-backup <<-'PLACEHOLDER'
-		#!/bin/bash
-		# Placeholder written by server-setup.sh before any release existed.
-		# The first `pnpm release` replaces this with deploy/backup.sh.
-		echo "no release has been deployed yet; nothing to back up" >&2
-		exit 0
-	PLACEHOLDER
-	chmod 755 /usr/local/bin/"$app"-backup
-	say "placeholder installed; the first release replaces it with the real one"
-fi
+# yet — so it cannot copy deploy/backup.sh in, and a copy would drift from Git
+# anyway. What goes in /usr/local/bin is four lines that hand over to the copy
+# inside whichever release is live, so every deploy updates the backup script
+# for free and nothing on the server needs root again after today.
+cat >/usr/local/bin/"$app"-backup <<-WRAPPER
+	#!/bin/bash
+	# Written by deploy/server-setup.sh. The backup itself is deploy/backup.sh
+	# inside the running release; this only points at it.
+	target=$dir/current/deploy/backup.sh
+	if [ ! -f "\$target" ]; then
+	  echo '{"event":"backup_skipped","reason":"no release deployed yet"}'
+	  exit 0
+	fi
+	exec bash "\$target" $app
+WRAPPER
+chmod 755 /usr/local/bin/"$app"-backup
+say "/usr/local/bin/$app-backup runs the copy inside the live release"
 
 # Written here from deploy/systemd/app-backup.service and .timer, kept in step
 # with them by hand and overwritten from the release on every deploy.
