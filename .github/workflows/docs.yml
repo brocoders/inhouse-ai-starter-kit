@@ -1,0 +1,53 @@
+name: Docs
+# Build the creator-facing guides and publish them to GitHub Pages.
+#
+# Only a change under docs/ can move the site, so this does not run on a code
+# change — the free Actions minutes on a private repository are the reason the
+# expensive work is split across workflows at all.
+#
+# Turn Pages on once, by hand: Settings → Pages → Build and deployment →
+# Source: GitHub Actions. Until that is done this workflow builds and then
+# fails at the deploy step.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one halfway: a cancelled deploy
+# can leave the site serving a half-uploaded build.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build and deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      # The whole tree, because docs/site/scripts/sync-reference.mjs copies the
+      # owner-facing pages out of docs/ before the build. No history is needed.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      # Installs, builds and uploads the Pages artifact in one step. The site is
+      # its own project with its own lockfile, hence the path.
+      - uses: withastro/action@3eafd002e65cc31b4f0eae0bb05450d521562247 # v6.1.3
+        with:
+          path: docs/site
+          package-manager: pnpm@11.19.0
+          node-version: '24'
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
