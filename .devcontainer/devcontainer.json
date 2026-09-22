@@ -1,0 +1,57 @@
+{
+  // A ready-made development machine inside a container. Two people need it:
+  // anyone on Windows (where the tooling expects WSL2 and half the guides
+  // assume a Mac), and anyone who wants a real PostgreSQL on their laptop
+  // without installing one.
+  //
+  // VS Code or Cursor: open the folder, accept "Reopen in Container".
+  // Everything below then already exists — Node 24, pnpm, and a database.
+  //
+  // You do not need this to use the kit. The everyday path is `pnpm install`
+  // and `pnpm dev` on your own machine, with tests running against the
+  // in-process database that needs no server at all.
+  "name": "InHouse app",
+
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  // No features, and deliberately no docker-in-docker. Building the production
+  // image is something the server does during a release; a Docker daemon in
+  // here would mostly be a way to run the release steps by hand, which is
+  // exactly what deploy/release.mjs exists to prevent.
+  "features": {},
+
+  "containerEnv": {
+    // Points at the db service beside this one. The password is "app" because
+    // this database holds invented data on one laptop and nothing else.
+    "DATABASE_URL": "postgres://app:app@db:5432/app",
+    "NODE_ENV": "development"
+  },
+
+  // 5173 is the screens (Vite), 3000 is the API (Hono).
+  "forwardPorts": [5173, 3000],
+  "portsAttributes": {
+    "5173": { "label": "Screens", "onAutoForward": "openBrowserOnce" },
+    "3000": { "label": "API" }
+  },
+
+  // Nothing from the host is mounted in — in particular not ~/.ssh. A container
+  // that can reach the production server is a container that can release to it
+  // by accident. Releases happen from your own machine.
+  "mounts": [],
+
+  "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile",
+
+  "remoteUser": "node",
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["esbenp.prettier-vscode", "bradlc.vscode-tailwindcss"],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  }
+}

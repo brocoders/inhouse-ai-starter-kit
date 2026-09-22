@@ -1,0 +1,39 @@
+# The two containers the dev container runs in. Nothing here resembles
+# production on purpose: this is a workbench, and production is compose.yaml in
+# the repository root.
+
+services:
+  dev:
+    # Microsoft's image, which already has Node 24, git, and a non-root "node"
+    # user set up the way VS Code expects.
+    image: mcr.microsoft.com/devcontainers/typescript-node:24
+    volumes:
+      - ..:/workspaces/${localWorkspaceFolderBasename:-app}:cached
+    # Keeps the container alive; VS Code attaches to it and runs commands there.
+    command: sleep infinity
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_DB: app
+      # Invented data on one laptop. A real password here would be security
+      # theatre and one more thing to mistype.
+      POSTGRES_PASSWORD: app
+    volumes:
+      - devdb:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U app -d app']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # No ports published to the host by default. The dev container reaches this
+    # over the private network between the two. If you want to point a database
+    # tool on your own machine at it, add:  ports: ['5432:5432']
+
+volumes:
+  devdb:

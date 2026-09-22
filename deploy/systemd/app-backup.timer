@@ -1,0 +1,18 @@
+; Template. See app-backup.service for how it gets installed.
+; Installed as /etc/systemd/system/__APP__-backup.timer.
+
+[Unit]
+Description=Run the __APP__ database dump every night
+
+[Timer]
+; 03:15 UTC: after the unattended-upgrades window opens and well before anyone
+; is awake, and not on the hour, where every cron job on every machine piles up.
+OnCalendar=*-*-* 03:15:00
+; If the machine was off or rebooting at 03:15, run as soon as it is back.
+; Without this a server that reboots nightly can go weeks with no backup and
+; nothing to show for it but a timer that says "enabled".
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

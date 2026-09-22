@@ -1,0 +1,28 @@
+; Template, and the readable copy. deploy/server-setup.sh writes this file out
+; with __APP__ replaced by the application's name; it arrives on a fresh machine
+; over SSH on its own, so it cannot read this file and carries the same text
+; inline. Change one, change the other — and re-run server-setup.sh, which is
+; safe to run again and rewrites both units.
+;
+; Installed as /etc/systemd/system/__APP__-backup.service.
+
+[Unit]
+Description=Nightly database dump for __APP__
+Documentation=https://github.com/brocoders/inhouse-ai-starter-kit
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+; The same user that owns the release and is in the docker group. Running the
+; backup as root would work and would be one more thing running as root.
+User=deploy
+Group=deploy
+Environment=APP_NAME=__APP__
+ExecStart=/usr/local/bin/__APP__-backup
+; A dump that hangs must not still be running when tomorrow's starts.
+TimeoutStartSec=30min
+; The app is serving people while this runs. Both lines tell the kernel to give
+; the dump whatever is left over rather than compete with the application.
+Nice=10
+IOSchedulingClass=idle
