@@ -1,7 +1,56 @@
 ---
 title: Costs
+description: Roughly USD 200-250 a month while you build and EUR 10-20 a month to run, and where each of those numbers comes from.
 sidebar:
   order: 8
 ---
 
-Stub.
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+**Roughly USD 200–250 a month while you are building, and EUR 10–20 a month to
+run.** Almost all of the first number is the AI subscription, which is the one
+thing you can turn down the month you stop building; almost all of the second is
+one rented server, which you cannot. There is no per-seat price, no per-record
+price, and nothing that grows when your team does — adding the eleventh person
+to your app costs nothing.
+
+<Aside type="tip" title="The one recommendation">
+  **Claude Max 20x, USD 200 a month**, for the weeks you are actively building. Pro at USD 20 is
+  enough to try the kit and make small changes. A wrong turn costs more than a stronger plan, which
+  is the whole argument.
+</Aside>
+
+## Where the numbers come from
+
+The full table — every plan and its limits, which model to use when, what the AI
+helpers inside your app cost per use, the server, the domain, e-mail and
+GitHub — is on one page, with the date the prices were last checked:
+
+<LinkCard
+  title="What it costs to build and run"
+  description="Plans, models, server, domain, e-mail and CI, with a last-verified date."
+  href={`${import.meta.env.BASE_URL}reference/cost/`}
+/>
+
+Prices in that table were verified on **22 September 2026**. Check the linked
+pages if you are reading this much later — the rules on the page outlive the
+numbers.
+
+## Two habits that keep the bill where it should be
+
+**Raise the effort before you change the model.** The same model can be told to
+think harder, and that is the cheaper lever. The agent will say when it genuinely
+needs a stronger one; a session cannot switch itself, so that is a request for
+you.
+
+**Keep to one conversation at a time.** Running several agent threads in
+parallel uses your weekly allowance several times faster. One at a time, with at
+most a couple of helpers, normally stays comfortably inside it.
+
+## Next
+
+<LinkCard
+  title="Recipes"
+  description="Six one-page briefs the agent can start building from today."
+  href={`${import.meta.env.BASE_URL}recipes/`}
+/>

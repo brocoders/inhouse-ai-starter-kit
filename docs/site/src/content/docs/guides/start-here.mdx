@@ -62,14 +62,16 @@ there and already tested. [What is built in](./built-in.mdx) is the full list.
 is the deadline the whole kit is built around, and it is why so much is decided
 in advance.
 
-What that hour contains, and who does which part:
+Where that hour sits in the whole arc, so you know what is not in it:
 
 ```mermaid
-flowchart LR
-  A["You<br/>describe the app"] --> B["Claude Code<br/>asks, fills in, builds"]
-  B --> C["Your laptop<br/>the app running locally"]
-  C --> D["Your phone<br/>added to the home screen"]
-  D -->|"what to change"| A
+flowchart TB
+  A["Hour one<br/>the app runs on your laptop<br/>and on your phone"]
+  B["The weeks after<br/>one to a few screens a week,<br/>each one described, built, tried"]
+  C["The day other people come in<br/>a server, a domain, e-mail<br/>— an afternoon, once"]
+  D["From then on<br/>one command puts a change live"]
+  A --> B --> C --> D
+  D -->|"the next thing you need"| B
 ```
 
 The server, the domain and the e-mail key are **not** in that hour. They come
