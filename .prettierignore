@@ -4,3 +4,9 @@ frontend/src/routeTree.gen.ts
 server/drizzle/meta
 docs/site/dist
 .shots
+
+# The documentation site's cache, and the reference pages that
+# docs/site/scripts/sync-reference.mjs copies out of docs/ before every build.
+# The originals are formatted; the copies are generated and are not committed.
+docs/site/.astro
+docs/site/src/content/docs/reference

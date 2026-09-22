@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- A neutral mark: a house outline holding three stacked records. It says
+       "in house" without naming a trade, so a project keeps it until it has a
+       logo of its own. Replace this file and run scripts/icons.mjs. -->
+  <rect width="512" height="512" rx="112" fill="#3b82f6"/>
+  <path d="M256 116 132 214v182h248V214L256 116Z" stroke="#ffffff" stroke-width="26" stroke-linejoin="round" fill="none"/>
+  <rect x="186" y="252" width="140" height="26" rx="13" fill="#ffffff"/>
+  <rect x="186" y="300" width="140" height="26" rx="13" fill="#ffffff" fill-opacity="0.75"/>
+  <rect x="186" y="348" width="88" height="26" rx="13" fill="#ffffff" fill-opacity="0.5"/>
+</svg>

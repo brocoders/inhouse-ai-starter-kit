@@ -1,0 +1,72 @@
+---
+title: InHouse
+description: A starter kit for founders, leaders and managers who want their own system for how their company, team or community works, built by directing an AI.
+template: splash
+editUrl: false
+hero:
+  tagline: Build your company's own tools with AI.
+  image:
+    alt: The InHouse mark — a house holding three records
+    file: ../../assets/icon.svg
+  actions:
+    # Written out with the base path because GitHub Pages serves this site from
+    # a folder and Starlight passes a hero action's link through unchanged.
+    - text: Start here
+      link: /inhouse-ai-starter-kit/guides/start-here/
+      icon: right-arrow
+    - text: The repository
+      link: https://github.com/brocoders/inhouse-ai-starter-kit
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+You describe what your company needs. An AI coding agent builds it on
+foundations that are already decided, tested and written down. You try it on
+your phone the same afternoon, and one command puts it on your own server.
+
+If you lead something and you are the one who ends up fixing the process, this
+is for you.
+
+<CardGrid>
+  <Card title="One place that is always current" icon="document">
+    Orders, cash, clients, members, equipment — whatever your part of the business actually runs on,
+    in a system that fits it rather than nearly fits it.
+  </Card>
+  <Card title="Used standing up, on a phone" icon="laptop">
+    Every app installs on the home screen, works offline enough to be pleasant, and is designed at
+    phone width before desktop width.
+  </Card>
+  <Card title="Yours, on your own server" icon="rocket">
+    One rented computer, one command to release, a copy of the database every night. No seat prices,
+    no export deadline, no vendor.
+  </Card>
+  <Card title="Written down for a leader to read" icon="approve-check">
+    Every decision, release and incident is recorded in plain words. Months later a new conversation
+    already knows the project.
+  </Card>
+</CardGrid>
+
+## Where to go next
+
+<LinkCard
+  title="Start here"
+  description="Who this is for, what you build, and the five things only you can provide."
+  href={`${import.meta.env.BASE_URL}guides/start-here/`}
+/>
+<LinkCard
+  title="Your first hour"
+  description="From nothing to your own app open on your phone."
+  href={`${import.meta.env.BASE_URL}guides/first-hour/`}
+/>
+<LinkCard
+  title="Recipes"
+  description="Six one-page briefs the agent can start building from today."
+  href={`${import.meta.env.BASE_URL}recipes/`}
+/>
+<LinkCard
+  title="Words you will meet"
+  description="Every technical term in these guides, in about five words each."
+  href={`${import.meta.env.BASE_URL}reference/glossary/`}
+/>
