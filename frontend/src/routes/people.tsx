@@ -175,7 +175,7 @@ function InviteDialog() {
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-sm">
         <form onSubmit={submit} noValidate>
           <DialogHeader>
             <DialogTitle>{t('people.inviteTitle')}</DialogTitle>

@@ -11,9 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
-import { Route as HealthRouteImport } from './routes/health'
 import { Route as PeopleRouteImport } from './routes/people'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SystemRouteImport } from './routes/system'
 import { Route as ItemsIndexRouteImport } from './routes/items/index'
 import { Route as ItemsIdRouteImport } from './routes/items/$id'
 import { Route as ItemsNewRouteImport } from './routes/items/new'
@@ -28,11 +28,6 @@ const AccountRoute = AccountRouteImport.update({
   path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PeopleRoute = PeopleRouteImport.update({
   id: '/people',
   path: '/people',
@@ -41,6 +36,11 @@ const PeopleRoute = PeopleRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemRoute = SystemRouteImport.update({
+  id: '/system',
+  path: '/system',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ItemsIndexRoute = ItemsIndexRouteImport.update({
@@ -62,9 +62,9 @@ const ItemsNewRoute = ItemsNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/health': typeof HealthRoute
   '/people': typeof PeopleRoute
   '/sign-in': typeof SignInRoute
+  '/system': typeof SystemRoute
   '/items/$id': typeof ItemsIdRoute
   '/items/new': typeof ItemsNewRoute
   '/items/': typeof ItemsIndexRoute
@@ -72,9 +72,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/health': typeof HealthRoute
   '/people': typeof PeopleRoute
   '/sign-in': typeof SignInRoute
+  '/system': typeof SystemRoute
   '/items/$id': typeof ItemsIdRoute
   '/items/new': typeof ItemsNewRoute
   '/items': typeof ItemsIndexRoute
@@ -83,9 +83,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/health': typeof HealthRoute
   '/people': typeof PeopleRoute
   '/sign-in': typeof SignInRoute
+  '/system': typeof SystemRoute
   '/items/$id': typeof ItemsIdRoute
   '/items/new': typeof ItemsNewRoute
   '/items/': typeof ItemsIndexRoute
@@ -95,9 +95,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
-    | '/health'
     | '/people'
     | '/sign-in'
+    | '/system'
     | '/items/$id'
     | '/items/new'
     | '/items/'
@@ -105,9 +105,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
-    | '/health'
     | '/people'
     | '/sign-in'
+    | '/system'
     | '/items/$id'
     | '/items/new'
     | '/items'
@@ -115,9 +115,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
-    | '/health'
     | '/people'
     | '/sign-in'
+    | '/system'
     | '/items/$id'
     | '/items/new'
     | '/items/'
@@ -126,9 +126,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
-  HealthRoute: typeof HealthRoute
   PeopleRoute: typeof PeopleRoute
   SignInRoute: typeof SignInRoute
+  SystemRoute: typeof SystemRoute
   ItemsIdRoute: typeof ItemsIdRoute
   ItemsNewRoute: typeof ItemsNewRoute
   ItemsIndexRoute: typeof ItemsIndexRoute
@@ -150,13 +150,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/people': {
       id: '/people'
       path: '/people'
@@ -169,6 +162,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system': {
+      id: '/system'
+      path: '/system'
+      fullPath: '/system'
+      preLoaderRoute: typeof SystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/items/': {
@@ -198,9 +198,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
-  HealthRoute: HealthRoute,
   PeopleRoute: PeopleRoute,
   SignInRoute: SignInRoute,
+  SystemRoute: SystemRoute,
   ItemsIdRoute: ItemsIdRoute,
   ItemsNewRoute: ItemsNewRoute,
   ItemsIndexRoute: ItemsIndexRoute,

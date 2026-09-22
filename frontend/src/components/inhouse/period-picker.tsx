@@ -207,7 +207,7 @@ export function PeriodPicker({
   return (
     <Dialog open={open} onOpenChange={start}>
       <DialogTrigger render={trigger} />
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
           <DialogDescription>Choose the days to show.</DialogDescription>

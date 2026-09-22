@@ -17,7 +17,7 @@ export const screens: Screen[] = [
   { to: '/', labelKey: 'nav.home', icon: House },
   { to: '/items', labelKey: 'nav.items', icon: ListChecks },
   { to: '/people', labelKey: 'nav.people', icon: Users },
-  { to: '/health', labelKey: 'nav.health', icon: Activity, ownerOnly: true },
+  { to: '/system', labelKey: 'nav.health', icon: Activity, ownerOnly: true },
   { to: '/account', labelKey: 'nav.account', icon: UserCircle },
 ];
 

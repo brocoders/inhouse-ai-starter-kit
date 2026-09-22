@@ -12,7 +12,7 @@ import { t } from '@/lib/i18n';
 import { queryClient } from '@/lib/query';
 import { Me } from '@shared/schemas';
 
-export const Route = createFileRoute('/health')({
+export const Route = createFileRoute('/system')({
   component: Health,
   // A viewer following a link to this address is sent home rather than shown
   // an empty page: the screen is the owner's, and the server enforces it too.

@@ -1,6 +1,6 @@
 ---
 paths:
-  - "frontend/**"
+  - 'frontend/**'
 ---
 
 # Screens

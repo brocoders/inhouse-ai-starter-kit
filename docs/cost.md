@@ -7,12 +7,12 @@ linked pages; the rules below outlive the numbers.
 
 The agent that builds your app runs on a Claude subscription. Plans, per month:
 
-| Plan | Price | What you get | Fits |
-| --- | --- | --- | --- |
-| Pro | USD 20 | Claude Code included; Opus, Sonnet, Haiku; Fable through credits | Trying the kit, small changes |
-| Max 5x | USD 100 | Five times Pro's usage per five-hour window; Fable up to half the weekly limit | One app, a few sessions a week |
-| **Max 20x** | USD 200 | Twenty times Pro's usage; the same Fable share | **Building an app over several weeks — our recommendation** |
-| Team | USD 25 / 125 per seat | For several people directing the same project | A company with two or more builders |
+| Plan        | Price                 | What you get                                                                   | Fits                                                        |
+| ----------- | --------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Pro         | USD 20                | Claude Code included; Opus, Sonnet, Haiku; Fable through credits               | Trying the kit, small changes                               |
+| Max 5x      | USD 100               | Five times Pro's usage per five-hour window; Fable up to half the weekly limit | One app, a few sessions a week                              |
+| **Max 20x** | USD 200               | Twenty times Pro's usage; the same Fable share                                 | **Building an app over several weeks — our recommendation** |
+| Team        | USD 25 / 125 per seat | For several people directing the same project                                  | A company with two or more builders                         |
 
 All paid plans also have a weekly ceiling across every model. A weeks-long build
 on Max 20x normally stays inside it; parallel agent threads (Claude Code
@@ -45,14 +45,14 @@ budget the app enforces itself.
 
 ## The server and the rest
 
-| Item | Typical cost | Notes |
-| --- | --- | --- |
-| One VPS (2 vCPU, 4 GB) | EUR 5–15 / month | Hetzner, DigitalOcean, Hostinger; pick the region your data should live in |
-| Provider backups | +20–30 % of the server | One checkbox; keep it on |
-| Domain | EUR 10–15 / year | Or a subdomain of one you own |
-| E-mail sending | Free tier | Resend: 3,000 e-mails a month, 100 a day |
-| GitHub | Free | Private repository; 2,000 CI minutes a month, see `docs/agents.md` for keeping under it |
-| A second small server | EUR 5–10 / month | Only when the app becomes business-critical: CI runner, backup target, debug copy |
+| Item                   | Typical cost           | Notes                                                                                   |
+| ---------------------- | ---------------------- | --------------------------------------------------------------------------------------- |
+| One VPS (2 vCPU, 4 GB) | EUR 5–15 / month       | Hetzner, DigitalOcean, Hostinger; pick the region your data should live in              |
+| Provider backups       | +20–30 % of the server | One checkbox; keep it on                                                                |
+| Domain                 | EUR 10–15 / year       | Or a subdomain of one you own                                                           |
+| E-mail sending         | Free tier              | Resend: 3,000 e-mails a month, 100 a day                                                |
+| GitHub                 | Free                   | Private repository; 2,000 CI minutes a month, see `docs/agents.md` for keeping under it |
+| A second small server  | EUR 5–10 / month       | Only when the app becomes business-critical: CI runner, backup target, debug copy       |
 
 Roughly: **USD 200–250 a month while building, EUR 10–20 a month to run**
 once the app is live and you change it rarely.

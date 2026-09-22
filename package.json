@@ -13,7 +13,7 @@
     "dev:frontend": "vite --config frontend/vite.config.ts",
     "build": "node --run build:server && node --run build:frontend",
     "build:server": "tsc -p server/tsconfig.json",
-    "build:frontend": "tsc -p frontend/tsconfig.json --noEmit && vite build --config frontend/vite.config.ts",
+    "build:frontend": "vite build --config frontend/vite.config.ts && tsc -p frontend/tsconfig.json --noEmit",
     "start": "node --env-file-if-exists=.env dist/server/src/main.js",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p frontend/tsconfig.json --noEmit",
     "test": "node --test --test-concurrency=2 'server/**/*.test.ts' 'scripts/**/*.test.mjs'",
@@ -68,6 +68,7 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "shadcn": "^4.21.0",
     "tailwindcss": "^4.3.3",
+    "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.0",
     "vite": "^8.3.0",
     "vite-plugin-pwa": "^1.3.0"

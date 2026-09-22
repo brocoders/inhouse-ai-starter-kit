@@ -1,7 +1,7 @@
 ---
 paths:
-  - "server/src/db/**"
-  - "server/drizzle/**"
+  - 'server/src/db/**'
+  - 'server/drizzle/**'
 ---
 
 # Schema and queries

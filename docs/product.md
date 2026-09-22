@@ -11,11 +11,11 @@ keeps every quote and its status, replacing the shared spreadsheet."
 
 ## Who uses it
 
-| Role | Who they are | What they do here |
-| --- | --- | --- |
-| Owner | | invites people, changes settings, sees the health page |
-| Member | | enters and edits records |
-| Viewer | | reads |
+| Role   | Who they are | What they do here                                      |
+| ------ | ------------ | ------------------------------------------------------ |
+| Owner  |              | invites people, changes settings, sees the health page |
+| Member |              | enters and edits records                               |
+| Viewer |              | reads                                                  |
 
 ## The records
 

@@ -32,7 +32,7 @@ export function BarList({
           <div key={row.name} className="flex items-center gap-3 text-sm">
             <div className="relative flex h-8 min-w-0 flex-1 items-center">
               <div
-                className="absolute inset-y-0 left-0 rounded bg-primary/15 dark:bg-primary/25"
+                className="absolute inset-y-0 left-0 rounded bg-primary/20"
                 style={{ width: `${width}%` }}
               />
               {row.link ? (

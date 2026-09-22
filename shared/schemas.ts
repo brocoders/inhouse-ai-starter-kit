@@ -25,7 +25,11 @@ export const ListQuery = z.object({
 export type ListQuery = z.infer<typeof ListQuery>;
 
 export function page<T extends z.ZodType>(row: T) {
-  return z.object({ rows: z.array(row), total: z.number().int(), nextCursor: z.string().nullable() });
+  return z.object({
+    rows: z.array(row),
+    total: z.number().int(),
+    nextCursor: z.string().nullable(),
+  });
 }
 
 // People -------------------------------------------------------------------
@@ -44,7 +48,11 @@ export type User = z.infer<typeof User>;
 export const Me = User.extend({ locale: z.string(), timeZone: z.string() });
 export type Me = z.infer<typeof Me>;
 
-export const InviteInput = z.object({ email: z.email(), name: z.string().trim().min(1).max(120), role: Role });
+export const InviteInput = z.object({
+  email: z.email(),
+  name: z.string().trim().min(1).max(120),
+  role: Role,
+});
 export const UpdateUserInput = z.object({ role: Role.optional(), active: z.boolean().optional() });
 
 // The example entity ---------------------------------------------------------
@@ -143,7 +151,12 @@ export const OpsStatus = z.object({
   problems: z.array(Problem),
   jobs: z.array(JobSummary),
   recentErrors: z.array(
-    z.object({ at: z.iso.datetime(), requestId: z.string().nullable(), message: z.string(), count: z.number().int() }),
+    z.object({
+      at: z.iso.datetime(),
+      requestId: z.string().nullable(),
+      message: z.string(),
+      count: z.number().int(),
+    }),
   ),
   disk: z.object({ freeBytes: z.number().int(), totalBytes: z.number().int() }).nullable(),
   lastBackupAt: z.iso.datetime().nullable(),
@@ -155,7 +168,15 @@ export type OpsStatus = z.infer<typeof OpsStatus>;
 // uses; the message is safe to show to a person.
 
 export const ApiError = z.object({
-  kind: z.enum(['validation', 'auth', 'forbidden', 'not_found', 'conflict', 'transient', 'permanent']),
+  kind: z.enum([
+    'validation',
+    'auth',
+    'forbidden',
+    'not_found',
+    'conflict',
+    'transient',
+    'permanent',
+  ]),
   message: z.string(),
   requestId: z.string(),
   fields: z.record(z.string(), z.string()).optional(),

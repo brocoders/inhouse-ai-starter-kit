@@ -40,7 +40,7 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={trigger as never} />
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {body && <DialogDescription>{body}</DialogDescription>}

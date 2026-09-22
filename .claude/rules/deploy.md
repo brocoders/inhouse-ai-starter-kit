@@ -1,8 +1,8 @@
 ---
 paths:
-  - "deploy/**"
-  - "compose.yaml"
-  - "Caddyfile"
+  - 'deploy/**'
+  - 'compose.yaml'
+  - 'Caddyfile'
 ---
 
 # Server and release

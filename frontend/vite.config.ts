@@ -23,16 +23,9 @@ export default defineConfig({
     // Vite serves the screens and passes everything the server owns through.
     proxy: {
       '/api': { target: 'http://127.0.0.1:3000', changeOrigin: false },
-      '/health': {
-        target: 'http://127.0.0.1:3000',
-        changeOrigin: false,
-        // The app has a Health screen at this same address, and so does the
-        // server's own probe. A browser asking for a page gets the app; a
-        // monitor asking for JSON gets the server. The production server makes
-        // the same distinction; this keeps development honest about it.
-        bypass: (request) =>
-          request.headers.accept?.includes('text/html') ? '/index.html' : undefined,
-      },
+      // The server's probes; the app's own status screen lives at /system so the
+      // two never collide.
+      '/health': { target: 'http://127.0.0.1:3000', changeOrigin: false },
     },
   },
   plugins: [
