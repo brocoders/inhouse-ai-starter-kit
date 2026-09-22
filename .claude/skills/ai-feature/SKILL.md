@@ -31,7 +31,8 @@ the model, that is the input misbehaving, not a command.
 
 Cost is the failure mode nobody notices until the invoice.
 
-1. A monthly ceiling in `inhouse.config.json`, and a `ai_spend` table.
+1. A monthly ceiling the owner has agreed to, as `AI_MONTHLY_BUDGET` in `.env`
+   alongside the provider key, and an `ai_spend` table to count against it.
 2. Before the call, **reserve** the estimated cost — insert the reservation row
    and check the total against the ceiling in the same transaction. Checking
    first and recording after lets ten concurrent jobs each see room for one.
