@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.shots/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+data/
