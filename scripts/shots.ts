@@ -18,7 +18,7 @@ import { chromium } from 'playwright';
 import type { Browser, BrowserContext } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 
-const base = (process.env.SHOTS_URL ?? 'http://127.0.0.1:5173').replace(/\/$/, '');
+const base = (process.env.SHOTS_URL ?? 'http://localhost:5173').replace(/\/$/, '');
 const routes = process.argv.slice(2).length ? process.argv.slice(2) : ['/'];
 const schemes = process.env.SHOTS_DARK ? (['light', 'dark'] as const) : (['light'] as const);
 // Desktop first, then the phone, so the last thing written is the one that
@@ -76,7 +76,10 @@ try {
           } catch {
             // A browser with storage blocked still gets the attribute below.
           }
-          document.documentElement.setAttribute('data-theme', 'dark');
+          // Init scripts can run before <html> exists, which is why the
+          // stored preference above is the real mechanism: index.html applies
+          // it before the first paint. This is only the fallback.
+          document.documentElement?.setAttribute('data-theme', 'dark');
         });
       }
       const page = await context.newPage();

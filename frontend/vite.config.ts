@@ -18,6 +18,9 @@ export default defineConfig({
   // bundler read them from there. Two lists would drift.
   resolve: { tsconfigPaths: true },
   server: {
+    // Listen on every interface, not only localhost: the first thing a creator
+    // does with a screen is open it on their phone over the same Wi-Fi.
+    host: true,
     // The API is same-origin in production — Better Auth's cookies are
     // same-origin only — so development has to look the same to the browser.
     // Vite serves the screens and passes everything the server owns through.
