@@ -7,7 +7,7 @@
 // one more turn and nothing else. Only the fast checks run — hygiene and the
 // compiler. Tests and the build belong to `pnpm check` and to CI.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runHook, projectDir, block } from './lib.mjs';
 
@@ -31,14 +31,34 @@ function changedFiles(root) {
   ];
 }
 
+// The loop guard. A problem the agent cannot fix — a type error in a file it
+// was told not to touch — would otherwise block every stop for the rest of the
+// session. So this hook blocks at most once per session: the first block
+// leaves a marker, a later stop with the marker present is let through, and a
+// clean pass removes it so the next real problem is caught again. (Older
+// versions of Claude Code sent `stop_hook_active` for the same purpose; the
+// current Stop payload does not, so the marker is what holds.)
+function markerFor(root, input) {
+  const id = String(input.session_id || 'unknown').replace(/[^A-Za-z0-9_-]/g, '_');
+  return path.join(root, '.claude', `.on-stop-ran-${id}`);
+}
+
+function blockOnce(marker, message) {
+  if (existsSync(marker)) return;
+  writeFileSync(marker, `${new Date().toISOString()}\n`);
+  block(message);
+}
+
 await runHook(async (input) => {
-  // Set when this hook already ran and the agent is finishing the follow-up
-  // turn it asked for. Checking again here would be a loop with no exit.
   if (input.stop_hook_active) return;
 
   const root = projectDir(input);
-  const changed = changedFiles(root).filter((f) => existsSync(path.join(root, f)));
-  if (!changed.length) return;
+  const marker = markerFor(root, input);
+  const passed = () => rmSync(marker, { force: true });
+  const changed = changedFiles(root).filter(
+    (f) => existsSync(path.join(root, f)) && !/^\.claude\/\.on-stop-ran-/.test(f),
+  );
+  if (!changed.length) return passed();
 
   const hygiene = spawnSync('node', ['scripts/check-repo.mjs', ...changed], {
     cwd: root,
@@ -46,9 +66,11 @@ await runHook(async (input) => {
     timeout: 30_000,
   });
   if (hygiene.status === 2) {
-    block(
+    blockOnce(
+      marker,
       `Before finishing — the repository check fails on what changed:\n\n${firstLines(hygiene.stderr)}`,
     );
+    return;
   }
 
   // One compile per project, and only for the project whose sources moved:
@@ -67,11 +89,14 @@ await runHook(async (input) => {
       timeout: 60_000,
     });
     if (tsc.status !== 0) {
-      block(
+      blockOnce(
+        marker,
         `Before finishing — the ${dir} does not compile:\n\n` +
           `${firstLines((tsc.stdout || '') + (tsc.stderr || ''))}\n\n` +
           'Fix these, then finish.',
       );
+      return;
     }
   }
+  passed();
 });
