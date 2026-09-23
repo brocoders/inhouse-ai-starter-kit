@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatDate, today } from '@/lib/format';
+import { t, type TextKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /** A stretch of calendar days, inclusive at both ends. */
@@ -31,11 +32,11 @@ export type Period = { from: string; to: string };
  * asks for "this month", not for "the last thirty-one days".
  */
 export const periodPresets = [
-  { key: 'month', label: 'This month' },
-  { key: 'previous', label: 'Last month' },
-  { key: 'quarter', label: 'This quarter' },
-  { key: 'year', label: 'This year' },
-] as const;
+  { key: 'month', labelKey: 'period.month' },
+  { key: 'previous', labelKey: 'period.previous' },
+  { key: 'quarter', labelKey: 'period.quarter' },
+  { key: 'year', labelKey: 'period.year' },
+] as const satisfies ReadonlyArray<{ key: string; labelKey: TextKey }>;
 
 export type PresetKey = (typeof periodPresets)[number]['key'];
 
@@ -90,8 +91,8 @@ export function previousPeriod({ from, to }: Period): Period | null {
 }
 
 function describe({ from, to }: Period): string {
-  if (!from || !to) return 'Choose a period';
-  return `${formatDate(from)} – ${formatDate(to)}`;
+  if (!from || !to) return t('period.choose');
+  return t('period.range', { from: formatDate(from), to: formatDate(to) });
 }
 
 /**
@@ -108,7 +109,7 @@ export function PeriodPicker({
   onChange,
   size = 'sm',
   className,
-  label = 'Period',
+  label = t('period.label'),
 }: {
   value: Period;
   onChange: (period: Period) => void;
@@ -136,7 +137,9 @@ export function PeriodPicker({
   const trigger = (
     <Button variant="outline" size={size} aria-label={label} className={cn('gap-2', className)}>
       <CalendarDays aria-hidden />
-      {active ? `${active.label} · ${describe(value)}` : describe(value)}
+      {active
+        ? t('period.named', { name: t(active.labelKey), range: describe(value) })
+        : describe(value)}
       <ChevronDown className="opacity-60" aria-hidden />
     </Button>
   );
@@ -151,14 +154,14 @@ export function PeriodPicker({
             variant={active?.key === preset.key ? 'secondary' : 'ghost'}
             onClick={() => apply(presetPeriod(preset.key))}
           >
-            {preset.label}
+            {t(preset.labelKey)}
           </Button>
         ))}
       </div>
       <div className="flex flex-wrap items-end gap-3 border-t pt-4">
         <div className="min-w-32 flex-1">
           <label htmlFor="period-from" className="mb-1.5 block text-xs text-muted-foreground">
-            From
+            {t('period.from')}
           </label>
           <Input
             id="period-from"
@@ -170,7 +173,7 @@ export function PeriodPicker({
         </div>
         <div className="min-w-32 flex-1">
           <label htmlFor="period-to" className="mb-1.5 block text-xs text-muted-foreground">
-            To
+            {t('period.to')}
           </label>
           <Input
             id="period-to"
@@ -185,7 +188,7 @@ export function PeriodPicker({
           disabled={!draft.from || !draft.to || draft.from > draft.to}
           onClick={() => apply(draft)}
         >
-          Apply
+          {t('period.apply')}
         </Button>
       </div>
     </div>
@@ -198,7 +201,7 @@ export function PeriodPicker({
         <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{label}</SheetTitle>
-            <SheetDescription>Choose the days to show.</SheetDescription>
+            <SheetDescription>{t('period.description')}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-6">{body}</div>
         </SheetContent>
@@ -210,7 +213,7 @@ export function PeriodPicker({
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{label}</DialogTitle>
-          <DialogDescription>Choose the days to show.</DialogDescription>
+          <DialogDescription>{t('period.description')}</DialogDescription>
         </DialogHeader>
         {body}
       </DialogContent>
