@@ -106,7 +106,7 @@ need on the first day.
 
 ## 5. Answer its questions
 
-Five of them, one at a time. There is no wrong answer you cannot change later —
+Six of them, one at a time. There is no wrong answer you cannot change later —
 every one of them lands in a single small file you can edit any day.
 
 | It asks                 | Answer with                                                                                                         |
@@ -115,6 +115,7 @@ every one of them lands in a single small file you can edit any day.
 | What is it for?         | One or two sentences: what it keeps track of, and for whom. This becomes the page every future session reads first. |
 | Who else will use it?   | Only you, or a team. This sets the profile — see [Working day to day](./day-to-day.mdx).                            |
 | Where are you?          | A city. It becomes the one time zone and the one date format the whole app uses.                                    |
+| Your name and e-mail?   | They become the owner account — you — and the address your sign-in link is made for.                                |
 | Do you have a server?   | "Not yet" is the right answer today.                                                                                |
 
 > **You should see:** the agent read your answers back in plain words — "the app
@@ -124,12 +125,15 @@ every one of them lands in a single small file you can edit any day.
 ## 6. Let it start the app
 
 The agent installs what the app depends on, creates a database on your own
-machine, puts some invented data in it, and starts the app. You do not type any
-of those commands; it runs `pnpm install`, `pnpm db:seed --owner` and `pnpm dev`
-and tells you what happened.
+machine, makes you its owner, puts some invented data in it, and starts the app.
+It also downloads, once, the browser it takes screenshots with. You do not type
+any of those commands; it runs `pnpm install`,
+`pnpm exec playwright install chromium`,
+`pnpm db:seed --owner you@example.com "Your Name" --sample` with your own address
+and name, and `pnpm dev`, and tells you what happened.
 
-> **You should see:** a line naming the account it made for you, and a link with
-> port 5173 in it.
+> **You should see:** a line naming the account it made for you, a sign-in link
+> the agent shows you, and the app running on port 5173.
 
 <Aside type="caution" title="If this went wrong">
   "Port already in use" means an earlier attempt is still running. Say so to the agent — it closes
@@ -138,7 +142,8 @@ and tells you what happened.
 
 ## 7. Open it on your laptop
 
-Follow the link. Sign in with the address from the previous step.
+Open the sign-in link from the previous step. It works once, within the hour; if
+it has expired, ask the agent for a new one.
 
 > **You should see:** a working app with a few rows of made-up data in it — the
 > worked example the kit ships with, which is there to be replaced.

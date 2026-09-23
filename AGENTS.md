@@ -13,8 +13,9 @@ in plain language, as behaviour and consequence, never as function names.
 Project-specific facts — what the app does, who its users are — live in
 `docs/product.md`. Read `docs/STATUS.md` first in every session.
 
-Profile: `PROFILE=solo|team` in `inhouse.config.json`. In `solo` you review,
-merge and release your own work. In `team` you open a pull request and stop.
+Profile: `"profile": "solo"` or `"team"` in `inhouse.config.json`. In `solo`
+you review, merge and release your own work. In `team` you open a pull
+request and stop.
 
 ## Commands
 
@@ -41,7 +42,8 @@ it; `~/.config/inhouse/<project>/` is where they live); edit files under
 `components/ui/` (re-add from the registry); modify an applied migration;
 write to the production database outside the app or a migration; run the
 full suite repeatedly without a new reason; silence an error with an empty
-catch or `|| true`.
+catch or `|| true`. Which of these a hook, a permission rule or a check
+enforces, and which rest on you: `docs/agents.md`.
 
 ## How to work
 
@@ -103,8 +105,10 @@ moves the rest.
 
 ## Invariants that hold in every app built from this kit
 
-- Every table carries `created_at`, `updated_at`, `created_by`, `updated_by`;
-  changes to records people care about land in `audit_log`.
+- Every table people edit carries `created_at`, `updated_at`, `created_by`,
+  `updated_by` (`withTracking()`); system tables (`audit_log`, `jobs`,
+  `notifications`, `schedules`) and the sign-in tables Better Auth owns carry
+  timestamps only. Changes to records people care about land in `audit_log`.
 - Lists are paged in SQL with a keyset cursor; the page, not the table, is
   enriched. Indexes ship in the same migration as the query that needs them.
 - Times are stored as instants; the app has one time zone and one locale, and
