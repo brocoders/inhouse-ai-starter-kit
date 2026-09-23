@@ -6,10 +6,12 @@
 //   node scripts/check-repo.mjs            # every Git-tracked file
 //   node scripts/check-repo.mjs a.ts b.md  # just these (the hook's path)
 //
-// Two families of rule. Secrets: a routable IP address, a private key, a
+// Three families of rule. Secrets: a routable IP address, a private key, a
 // forge or bot token, a cloud access key. The value is never echoed — the
 // report names the file and the kind. Budgets: the always-loaded agent
 // instructions stay short enough to be read, so the rules in them are.
+// Migrations: a migration that is on `main` has been applied somewhere, so it
+// is never edited or deleted — the next change is a new migration.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -68,6 +70,59 @@ function checkSecrets(rel, text, errors) {
   });
 }
 
+const MIGRATIONS = 'server/drizzle/';
+
+/** The first of `main` / `origin/main` that exists here, or null (a shallow CI clone). */
+export function baseRef(root = ROOT) {
+  for (const ref of ['main', 'origin/main']) {
+    try {
+      execFileSync('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], {
+        cwd: root,
+        stdio: 'ignore',
+      });
+      return ref;
+    } catch {
+      // not this one
+    }
+  }
+  return null;
+}
+
+/**
+ * Migrations that exist on `base` and differ from it in the working tree —
+ * edited, or deleted. New migrations are not on `base` and so are not listed.
+ */
+export function changedMigrations(root, base) {
+  const onBase = execFileSync('git', ['ls-tree', '-r', '--name-only', base, '--', MIGRATIONS], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter((f) => f.endsWith('.sql'));
+  return onBase.filter((file) => {
+    try {
+      execFileSync('git', ['diff', '--quiet', base, '--', file], { cwd: root, stdio: 'ignore' });
+      return false;
+    } catch {
+      return true;
+    }
+  });
+}
+
+function checkMigrations(errors) {
+  const base = baseRef();
+  if (!base) {
+    console.log('check-repo: no main branch in this clone, applied-migration check skipped');
+    return;
+  }
+  for (const file of changedMigrations(ROOT, base)) {
+    errors.push(
+      `${file}: differs from ${base}; a migration on ${base} has been applied — revert it and ` +
+        'write a new one with `pnpm db:generate`',
+    );
+  }
+}
+
 function checkBudgets(rel, text, errors) {
   const lines = text.split('\n').length;
   const base = path.basename(rel);
@@ -108,6 +163,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
     checkSecrets(rel, text, errors);
     checkBudgets(rel, text, errors);
   }
+  // On a full run, and on a hook run that touched a migration.
+  if (!args.length || files.some((rel) => rel.startsWith(MIGRATIONS))) checkMigrations(errors);
   if (errors.length) {
     console.error(errors.join('\n'));
     console.error(
