@@ -80,8 +80,13 @@ remembers. And everything it does is written down for a leader to read.
 
 ## Status
 
-Being built. The guides, the recipes and the first release will appear here.
-Decisions taken so far are in [docs/decisions.md](docs/decisions.md).
+Version 0.1 — built and checked, not yet released to anyone. `pnpm check`
+passes (145 tests, the design checker, the bundle budget); the app has been
+run end to end on a laptop and a phone with invented data. The server path
+(Docker Compose, the one-command release, backups) is written and tested
+against stubs but has **not yet run on a real server** — the first real
+release is the next milestone. Decisions taken so far are in
+[docs/decisions.md](docs/decisions.md); the guides are in `docs/site`.
 
 ---
 
