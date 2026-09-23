@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { eq } from 'drizzle-orm';
-import type { ApiError, Me, User } from '../../../shared/schemas.ts';
+import type { ApiError, AuditEvent, Me, User } from '../../../shared/schemas.ts';
 import { db } from '../db/index.ts';
 import { user } from '../db/schema.ts';
 import { app } from '../app.ts';
@@ -113,6 +113,37 @@ describe('what each role may do', () => {
     assert.equal((await json<Me>(await call('GET', '/api/me'))).role, 'viewer');
 
     assert.equal((await call('PATCH', '/api/me', { name: '   ' })).status, 400);
+  });
+});
+
+describe('the history of the people list', () => {
+  it('is closed to a viewer, whose role is to see records, not what lies behind them', async () => {
+    actAs(viewer);
+    for (const path of ['/api/audit', '/api/audit?entity=user', '/api/audit?entity=items']) {
+      const response = await call('GET', path);
+      assert.equal(response.status, 403, path);
+      assert.equal((await json<ApiError>(response)).kind, 'forbidden');
+    }
+    actAs(member);
+    assert.equal((await call('GET', '/api/audit?entity=items')).status, 200);
+  });
+
+  it('says an address was set without writing the address down', async () => {
+    actAs(owner);
+    await call('POST', '/api/users', {
+      email: 'private.person@example.com',
+      name: 'Private Person',
+      role: 'viewer',
+    });
+    const response = await call('GET', '/api/audit?entity=user');
+    assert.equal(response.status, 200);
+    const text = await response.clone().text();
+    assert.equal(text.includes('private.person@example.com'), false, 'the address is in the log');
+    const history = await json<{ rows: AuditEvent[] }>(response);
+    const created = history.rows.find((row) => row.action === 'created');
+    assert.deepEqual(created?.changes.email, { from: null, to: '[email]' });
+    // Everything else about the invitation is still there to be read.
+    assert.deepEqual(created?.changes.role, { from: null, to: 'viewer' });
   });
 });
 

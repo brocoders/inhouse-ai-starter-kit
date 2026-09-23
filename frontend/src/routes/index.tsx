@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState, HistoryList, KpiCard, PageHeader, RefreshButton } from '@/components/inhouse';
 import { BucketBars, type Bucket } from '@/components/charts';
 import { api } from '@/lib/api';
+import { canEdit, useMe } from '@/lib/auth';
 import { formatDate, formatNumber, shiftDay, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { fieldName, fieldValue } from '@/lib/items';
@@ -15,6 +16,10 @@ import { fieldName, fieldValue } from '@/lib/items';
 export const Route = createFileRoute('/')({ component: Home });
 
 function Home() {
+  const me = useMe();
+  // Recent changes come from the history, which is a member's or an owner's
+  // to read. A viewer's home page has the counts and the chart and no more.
+  const mayReadHistory = canEdit(me.data?.role);
   // Three counts and a list. Each count asks for one row and reads `total`,
   // which is what the list endpoint already reports — a screen that only needs
   // a number should not download the rows behind it.
@@ -37,6 +42,7 @@ function Home() {
   const audit = useQuery({
     queryKey: ['audit', 'recent'],
     queryFn: () => api.get('/api/audit', AuditPage, { limit: 8 }),
+    enabled: mayReadHistory,
   });
 
   const todayDay = today();
@@ -91,29 +97,35 @@ function Home() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-xs">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">{t('home.recent')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {audit.isPending ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((n) => (
-                <Skeleton key={n} className="h-5 w-full" />
-              ))}
-            </div>
-          ) : audit.data?.rows.length ? (
-            <HistoryList events={audit.data.rows} fieldLabel={fieldName} valueLabel={fieldValue} />
-          ) : (
-            <EmptyState
-              icon={History}
-              title={t('home.recentEmpty')}
-              text={t('home.recentEmptyBody')}
-              className="border-0 py-6"
-            />
-          )}
-        </CardContent>
-      </Card>
+      {mayReadHistory && (
+        <Card className="shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">{t('home.recent')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {audit.isPending ? (
+              <div className="space-y-2">
+                {[0, 1, 2].map((n) => (
+                  <Skeleton key={n} className="h-5 w-full" />
+                ))}
+              </div>
+            ) : audit.data?.rows.length ? (
+              <HistoryList
+                events={audit.data.rows}
+                fieldLabel={fieldName}
+                valueLabel={fieldValue}
+              />
+            ) : (
+              <EmptyState
+                icon={History}
+                title={t('home.recentEmpty')}
+                text={t('home.recentEmptyBody')}
+                className="border-0 py-6"
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

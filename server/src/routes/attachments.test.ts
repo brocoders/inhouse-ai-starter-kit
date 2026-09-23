@@ -57,6 +57,21 @@ describe('attaching a file', () => {
     assert.equal(await fetched.text(), 'pretend pdf bytes');
   });
 
+  it('hands back a file whose name is not in English', async () => {
+    actAs(member);
+    const saved = await json<Attachment>(await upload('отчёт.pdf', 'звіт', 'application/pdf'));
+    assert.equal(saved.fileName, 'отчёт.pdf');
+
+    const fetched = await app.request(`/api/attachments/${saved.id}`);
+    assert.equal(fetched.status, 200);
+    const header = fetched.headers.get('content-disposition') ?? '';
+    // The real name, for every browser that reads the encoded form…
+    assert.match(header, /filename\*=UTF-8''%D0%BE%D1%82%D1%87%D1%91%D1%82\.pdf/);
+    // …and a plain one, with the extension intact, for anything that does not.
+    assert.match(header, /filename="[\x20-\x7e]*\.pdf"/);
+    assert.equal(await fetched.text(), 'звіт');
+  });
+
   it('stores it under an id of ours, so a name can never become a path', async () => {
     actAs(member);
     const saved = await json<Attachment>(await upload('../../etc/passwd', 'not really'));

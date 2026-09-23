@@ -78,6 +78,20 @@ export const auth = betterAuth({
       sameSite: 'lax',
       secure: config.isProduction,
     },
+    // The rate limit below counts per address, and the address is all Better
+    // Auth has to go on: behind Caddy the connection always comes from Caddy,
+    // so without a header every person on earth would share one budget of
+    // three sign-in attempts. Caddy sets `X-Forwarded-For` to the one address
+    // it saw and throws away whatever the browser sent in that header, and the
+    // app's port is not published, so a single-value header here is the
+    // client's real address. `trustedProxies` stays unset on purpose: with it
+    // unset Better Auth accepts only a single-value header, so a forged chain
+    // resolves to no address rather than to the one the forger chose. In
+    // development Vite adds no header and every request counts as 127.0.0.1,
+    // which for one person at one machine is the truth.
+    ipAddress: {
+      ipAddressHeaders: ['x-forwarded-for'],
+    },
   },
   rateLimit: {
     enabled: true,
