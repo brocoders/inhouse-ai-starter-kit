@@ -31,6 +31,7 @@ import {
   type Item,
 } from '../../../shared/schemas.ts';
 import { requireRole, type AppEnv } from '../auth.ts';
+import { config } from '../config.ts';
 import { db, type Db } from '../db/index.ts';
 import { recordChange } from '../db/audit.ts';
 import { items, user } from '../db/schema.ts';
@@ -63,8 +64,13 @@ function toItem(row: ItemRow): Item {
  * "Today" is a calendar day in the app's time zone, worked out once here and
  * passed to the database as a date. A day in Lisbon is not a day in UTC, and
  * at one minute past midnight the difference is the whole answer.
+ *
+ * It is the app's zone and nobody's own. Two people looking at "overdue" at
+ * the same moment must see the same list, and the reminder job and the home
+ * page count against the same day; a person's own zone is for showing them a
+ * time, never for deciding which records match.
  */
-function filters(query: z.infer<typeof ItemListQuery>, timeZone?: string): SQL[] {
+function filters(query: z.infer<typeof ItemListQuery>): SQL[] {
   const where: SQL[] = [isNull(items.deletedAt)];
   if (query.q) {
     const needle = query.q.toLowerCase();
@@ -75,7 +81,7 @@ function filters(query: z.infer<typeof ItemListQuery>, timeZone?: string): SQL[]
   if (query.status) where.push(eq(items.status, query.status));
   if (query.assigneeId) where.push(eq(items.assigneeId, query.assigneeId));
   if (query.due) {
-    const today = calendarDay(new Date(), timeZone);
+    const today = calendarDay(new Date(), config.timeZone);
     if (query.due === 'none') where.push(isNull(items.dueOn));
     if (query.due === 'overdue')
       where.push(and(isNotNull(items.dueOn), lt(items.dueOn, today)) as SQL);
@@ -102,9 +108,8 @@ const after = (cursor: string): SQL =>
 export async function listItems(
   database: Db,
   query: z.infer<typeof ItemListQuery>,
-  timeZone?: string,
 ): Promise<z.infer<typeof ItemPage>> {
-  const where = filters(query, timeZone);
+  const where = filters(query);
 
   const counted = await database
     .select({ total: sql<number>`count(*)::int` })
@@ -144,7 +149,7 @@ const idParam = z.object({ id: z.string().min(1) });
 
 export const itemsRoutes = new Hono<AppEnv>()
   .get('/', requireRole('viewer'), zValidator('query', ItemListQuery, orFail), async (c) => {
-    return c.json(await listItems(db, c.req.valid('query'), c.get('user').timeZone));
+    return c.json(await listItems(db, c.req.valid('query')));
   })
   .get('/:id', requireRole('viewer'), zValidator('param', idParam, orFail), async (c) => {
     const row = await readItem(db, c.req.valid('param').id);
