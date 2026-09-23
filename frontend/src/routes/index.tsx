@@ -9,7 +9,7 @@ import { EmptyState, HistoryList, KpiCard, PageHeader, RefreshButton } from '@/c
 import { BucketBars, type Bucket } from '@/components/charts';
 import { api } from '@/lib/api';
 import { canEdit, useMe } from '@/lib/auth';
-import { formatDate, formatNumber, shiftDay, today } from '@/lib/format';
+import { dayOf, formatDate, formatNumber, shiftDay, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { fieldName, fieldValue } from '@/lib/items';
 
@@ -45,10 +45,18 @@ function Home() {
     enabled: mayReadHistory,
   });
 
+  // A count that could not be read is not zero. The route's error screen
+  // shows the server's own sentence and the reference to quote, instead of a
+  // row of reassuring noughts.
+  const failed = [open, overdue, done, audit].find((query) => query.isError);
+  if (failed?.error) throw failed.error;
+
   const todayDay = today();
   const since = shiftDay(todayDay, -7);
+  // The day each item was finished on is the app's day, not UTC's: an item
+  // closed at 23:30 in the office belongs to that day's bar.
   const doneThisWeek = (done.data?.rows ?? []).filter(
-    (item) => item.updatedAt.slice(0, 10) >= since,
+    (item) => dayOf(item.updatedAt) >= since,
   ).length;
 
   return (
@@ -143,7 +151,7 @@ function weeklyBuckets(rows: Array<{ updatedAt: string }>, todayDay: string): Bu
     buckets.push({
       label: formatDate(end),
       value: rows.filter((row) => {
-        const day = row.updatedAt.slice(0, 10);
+        const day = dayOf(row.updatedAt);
         return day >= start && day <= end;
       }).length,
       open: week === 0,

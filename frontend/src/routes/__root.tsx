@@ -17,7 +17,7 @@ import { AppUpdate } from '@/components/shell/app-update';
 import { PullToRefresh } from '@/components/shell/pull-to-refresh';
 import { TabBar } from '@/components/shell/tab-bar';
 import { useMe } from '@/lib/auth';
-import { errorMessage } from '@/lib/api';
+import { ApiError, errorMessage } from '@/lib/api';
 import { FormatProvider } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { queryClient } from '@/lib/query';
@@ -123,12 +123,18 @@ function Shell() {
 
 /** Any screen that throws lands here rather than taking the app down. */
 function ScreenError({ error }: ErrorComponentProps) {
+  // The server's sentence, and the reference that finds its line in the log —
+  // the one thing a person can pass on that makes the problem findable.
+  const reference =
+    error instanceof ApiError && error.requestId
+      ? t('error.requestId', { id: error.requestId })
+      : '';
   return (
     <div className="mx-auto w-full max-w-md p-6">
       <EmptyState
         icon={CircleAlert}
         title={t('error.title')}
-        text={errorMessage(error)}
+        text={reference ? `${errorMessage(error)} ${reference}` : errorMessage(error)}
         action={
           <Button variant="outline" onClick={() => window.location.reload()}>
             {t('action.retry')}
