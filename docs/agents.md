@@ -100,6 +100,20 @@ sandbox rule that no process may write the path, and `pnpm exec shadcn add`,
 `pnpm db:generate` and `pnpm add` are the reviewed way to write exactly those
 files.
 
+## Changing the rules without breaking them
+
+The instructions are code and are checked like code: `AGENTS.md` may not pass
+150 lines, a rule file 60, a skill 80 — `scripts/check-repo.mjs` fails the
+build otherwise. Hooks and checkers have tests in `scripts/*.test.mjs`. So a
+change to how the agent works follows the same path as a change to the app:
+edit, run the checks, commit with a reason.
+
+Every rule has one home — a memory note, `AGENTS.md`, a folder rule, a skill, a
+hook or a checker — and the `tune-agent` skill is the procedure for choosing it
+when the owner has corrected the agent twice about the same thing. The table
+above says which rules are fences; a change that turns a fence back into a
+sentence is the one to refuse.
+
 ## The two profiles
 
 `inhouse.config.json` holds one of them, and it decides how much the agent
