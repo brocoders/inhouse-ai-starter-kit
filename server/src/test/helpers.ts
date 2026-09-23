@@ -9,11 +9,13 @@ import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { Role } from '../../../shared/schemas.ts';
 import { app } from '../app.ts';
+import { auth } from '../auth.ts';
 import { config } from '../config.ts';
 import { db, handle } from '../db/index.ts';
 import { migrateDb } from '../db/migrate.ts';
 import { user } from '../db/schema.ts';
 import { clearRecentErrors } from '../log.ts';
+import { lastOutboxMessage } from '../notify/email.ts';
 
 let migrated: Promise<void> | undefined;
 
@@ -61,11 +63,33 @@ export async function makeUser(
  * It uses the same development stand-in the screenshot script uses, which goes
  * through `requireUser` exactly as a real session does — the role check, the
  * "turned off" check and `c.var.user` are all the code that runs in
- * production. The cookie half of signing in is covered separately, by a test
- * that follows a real magic link from the outbox.
+ * production. The cookie half is covered separately: `sessionCookieFor` below
+ * follows a real magic link, and `users.test.ts` checks every role through it.
  */
 export function actAs(person: TestUser | { email: string } | undefined): void {
   config.devAutoSignInEmail = person?.email;
+}
+
+/**
+ * A real session cookie for this person, got the way a person gets one: a
+ * magic link is sent, the link in the outbox is opened, and the answer sets
+ * the cookie. For the tests that must prove the cookie path enforces the same
+ * rules as the stand-in `actAs` uses.
+ *
+ * The link is asked for through the server's own API rather than the HTTP
+ * endpoint, so the tests do not spend the sign-in rate limit on themselves.
+ */
+export async function sessionCookieFor(person: { email: string }): Promise<string> {
+  await auth.api.signInMagicLink({
+    body: { email: person.email, callbackURL: '/' },
+    headers: new Headers(),
+  });
+  const link = lastOutboxMessage()?.body.match(/http:\/\/\S+/)?.[0];
+  if (!link) throw new Error(`no sign-in link was sent to ${person.email}`);
+  const opened = await app.request(link, { redirect: 'manual' });
+  const cookie = opened.headers.get('set-cookie')?.split(';')[0];
+  if (!cookie) throw new Error(`opening the link set no cookie (status ${opened.status})`);
+  return cookie;
 }
 
 export async function signedOut(): Promise<void> {

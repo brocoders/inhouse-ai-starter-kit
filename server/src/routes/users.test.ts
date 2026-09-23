@@ -15,6 +15,7 @@ import {
   makeUser,
   ready,
   reset,
+  sessionCookieFor,
   type TestUser,
 } from '../test/helpers.ts';
 
@@ -113,6 +114,61 @@ describe('what each role may do', () => {
     assert.equal((await json<Me>(await call('GET', '/api/me'))).role, 'viewer');
 
     assert.equal((await call('PATCH', '/api/me', { name: '   ' })).status, 400);
+  });
+});
+
+// The tests above are somebody through the development stand-in. These are
+// the same rules reached through a real session cookie from a magic link, so
+// a role check that only worked for the stand-in could not pass unnoticed.
+describe('what each role may do, signed in with a real cookie', () => {
+  const as = async (person: TestUser) => {
+    actAs(undefined);
+    const cookie = await sessionCookieFor(person);
+    return (method: string, path: string, body?: Record<string, unknown>) =>
+      call(method, path, body, { headers: { cookie } });
+  };
+
+  it('a viewer reads and cannot write or read the history', async () => {
+    const request = await as(viewer);
+    assert.equal((await request('GET', '/api/me')).status, 200);
+    assert.equal((await request('GET', '/api/items')).status, 200);
+    assert.equal((await request('POST', '/api/items', { title: 'Something' })).status, 403);
+    assert.equal((await request('GET', '/api/audit')).status, 403);
+    assert.equal((await request('GET', '/api/users')).status, 403);
+  });
+
+  it('a member writes and cannot delete or manage people', async () => {
+    const request = await as(member);
+    const created = await request('POST', '/api/items', { title: 'Something' });
+    assert.equal(created.status, 201);
+    const { id } = await json<{ id: string }>(created);
+    assert.equal((await request('DELETE', `/api/items/${id}`)).status, 403);
+    assert.equal(
+      (await request('PATCH', `/api/users/${viewer.id}`, { role: 'member' })).status,
+      403,
+    );
+    assert.equal((await request('GET', '/api/ops')).status, 403);
+  });
+
+  it('an owner deletes and manages people', async () => {
+    const request = await as(owner);
+    const { id } = await json<{ id: string }>(
+      await request('POST', '/api/items', { title: 'Something' }),
+    );
+    assert.equal((await request('DELETE', `/api/items/${id}`)).status, 204);
+    assert.equal((await request('GET', '/api/ops')).status, 200);
+    assert.equal(
+      (await request('PATCH', `/api/users/${viewer.id}`, { role: 'member' })).status,
+      200,
+    );
+  });
+
+  it('a turned-off account is refused even with a cookie that still works', async () => {
+    const request = await as(member);
+    await db.update(user).set({ active: false }).where(eq(user.id, member.id));
+    const response = await request('GET', '/api/items');
+    assert.equal(response.status, 403);
+    assert.match((await json<ApiError>(response)).message, /turned off/);
   });
 });
 
