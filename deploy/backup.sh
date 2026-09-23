@@ -1,8 +1,14 @@
 #!/bin/bash
 # One copy of the database, written to this machine's disk.
 #
-#   /usr/local/bin/<app>-backup          (what the nightly timer runs)
-#   bash deploy/backup.sh <app>          (the same thing, by hand)
+#   /usr/local/bin/<app>-backup                (what the nightly timer runs)
+#   bash deploy/backup.sh <app>                (the same thing, by hand)
+#   bash deploy/backup.sh <app> --pre-restore  (restore.sh, before it overwrites)
+#
+# Each dump is named for the second it was taken, app-2026-09-21T031502Z.dump,
+# so two dumps on the same day are two files. They used to be named for the day
+# alone, and restoring today's dump over the live database began by taking a
+# safety dump — which overwrote the very file about to be restored.
 #
 # Run every night at 03:15 by <app>-backup.timer, and once more by
 # deploy/release.mjs immediately before a release changes anything — so the
@@ -16,9 +22,21 @@ umask 077
 
 app=${1:-${APP_NAME:-}}
 [ -n "$app" ] || {
-	echo "usage: bash deploy/backup.sh <app-name>" >&2
+	echo "usage: bash deploy/backup.sh <app-name> [--pre-restore]" >&2
 	exit 64
 }
+# The safety copy restore.sh takes of the live data before replacing it. A
+# different prefix, so it can never be mistaken for, or take the place of, the
+# dump being restored.
+prefix=
+case ${2:-} in
+'') ;;
+--pre-restore) prefix=pre-restore- ;;
+*)
+	echo "unknown option: $2" >&2
+	exit 64
+	;;
+esac
 # inhouse.config.json names this folder (deploy.dir); it is /opt/<app> unless
 # the creator chose otherwise, and APP_DIR is how the caller says so.
 dir=${APP_DIR:-/opt/$app}
@@ -44,12 +62,21 @@ compose() {
 }
 
 if [ ! -e "$dir/current/compose.yaml" ]; then
+	# Nothing is deployed, so there is no database to copy. Normal for the timer
+	# on a machine that has not had its first release; an error for restore.sh,
+	# which promised a safety copy before it replaces anything.
 	echo '{"event":"backup_skipped","reason":"no release deployed yet"}'
+	if [ -n "$prefix" ]; then exit 69; fi
 	exit 0
 fi
 
-stamp=$(date -u +%Y-%m-%d)
-final=$out/app-$stamp.dump
+stamp=$(date -u +%Y-%m-%dT%H%M%SZ)
+final=$out/${prefix}app-$stamp.dump
+if [ -e "$final" ]; then
+	# Two dumps within the same second. Never overwrite one.
+	echo "{\"event\":\"backup_failed\",\"reason\":\"$final already exists\"}" >&2
+	exit 75
+fi
 staged=$out/.partial-$$
 
 # Written to a temporary name and renamed only once pg_dump has succeeded. A
@@ -60,7 +87,9 @@ trap cleanup EXIT
 
 # -Fc is PostgreSQL's own compressed format: it restores selectively (one table,
 # or the schema without the data) where a plain .sql file has to be run whole.
-compose exec -T db pg_dump -U app -Fc app >"$staged"
+# </dev/null because `compose exec` forwards stdin even with -T, and when a
+# release runs this over SSH, stdin is the rest of the release's script.
+compose exec -T db pg_dump -U app -Fc app </dev/null >"$staged"
 
 size=$(wc -c <"$staged" | tr -d " ")
 # An empty or near-empty file means pg_dump wrote an error to stdout, or the
@@ -70,13 +99,15 @@ if [ "$size" -lt 1024 ]; then
 	exit 75
 fi
 
-mv -f "$staged" "$final"
+mv "$staged" "$final"
 trap - EXIT
 
-# Fourteen days: long enough that a problem noticed a fortnight later is still
-# recoverable, short enough that the dumps never become the reason the disk
-# fills. -mtime +$keep_days only ever matches this app's own files.
-removed=$(find "$out" -maxdepth 1 -type f -name 'app-*.dump' -mtime +"$keep_days" -print -delete | wc -l | tr -d ' ')
+# Fourteen days, by the file's own age rather than the date in its name:
+# long enough that a problem noticed a fortnight later is still recoverable,
+# short enough that the dumps never become the reason the disk fills. The two
+# patterns only ever match this app's own dumps.
+removed=$(find "$out" -maxdepth 1 -type f \( -name 'app-*.dump' -o -name 'pre-restore-app-*.dump' \) \
+	-mtime +"$keep_days" -print -delete | wc -l | tr -d ' ')
 
 printf '{"event":"backup_completed","file":"%s","bytes":%s,"removed_old":%s,"off_server":false}\n' \
 	"$final" "$size" "$removed"
