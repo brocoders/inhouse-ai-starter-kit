@@ -63,6 +63,27 @@ describe('the answers a machine reads', () => {
     assert.ok(body.schemaVersion >= 1);
   });
 
+  it('answers a mistyped probe with a JSON 404, not the app with a 200', async () => {
+    // Mount the screens the way production does, so the fall-through that
+    // would turn a typo into a passing check is really there.
+    const dir = path.resolve('node_modules/.cache/inhouse-health-fixture');
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'index.html'), '<!doctype html><title>The app</title>');
+    try {
+      const site = new Hono<AppEnv>().route('/', app);
+      mountFrontend(site, dir);
+      for (const probe of ['/health/nope', '/health/live/extra', '/health/']) {
+        const response = await site.request(probe);
+        assert.equal(response.status, 404, probe);
+        assert.match(response.headers.get('content-type') ?? '', /application\/json/, probe);
+        assert.equal((await json<ApiError>(response)).kind, 'not_found', probe);
+      }
+      assert.equal((await site.request('/health/live')).status, 200);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('needs no sign-in for any of them', async () => {
     actAs(undefined);
     for (const path of ['/health/live', '/health/ready', '/health/version']) {
@@ -79,6 +100,11 @@ describe('the headers every answer carries', () => {
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
     assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
     assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  });
+
+  it('leaves HSTS to Caddy, which owns the connection', async () => {
+    const response = await app.request('/health/live');
+    assert.equal(response.headers.get('strict-transport-security'), null);
   });
 });
 
