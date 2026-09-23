@@ -1,0 +1,70 @@
+---
+title: Recipes
+description: Six one-page starting specs — a small CRM, expense approvals, an asset register, membership and dues, a KPI dashboard and a task tracker.
+sidebar:
+  order: 1
+  label: About the recipes
+---
+
+import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Six starting points. Each is a one-page brief in exactly the shape the agent
+writes for itself: for whom, what a person can do, the screens, the records, the
+rules, what counts as done, and what is out of scope.
+
+**They are starting points, not products.** The interesting part of your system
+is the part none of these has. Open the closest one, read it out loud, change the
+three or four things that are wrong for you, and hand that to the agent as the
+brief. It will interview you about the rest.
+
+<Aside type="tip" title="How to use one">
+  Paste the whole page into a fresh conversation and say what is different: "this one, except we
+  have two branches and a quote can be split between them, and we do not need the e-mail digest."
+  The agent will ask about the parts you did not mention, and then write your version of the page
+  for you to approve.
+</Aside>
+
+## The six
+
+<CardGrid>
+  <LinkCard
+    title="A small CRM"
+    description="Clients, the conversations with them, and what is going quiet."
+    href={`${import.meta.env.BASE_URL}recipes/crm/`}
+  />
+  <LinkCard
+    title="Expense approvals"
+    description="Somebody spends, somebody approves, everybody can see where it got to."
+    href={`${import.meta.env.BASE_URL}recipes/expenses/`}
+  />
+  <LinkCard
+    title="Inventory and assets"
+    description="What you own, where it is, who has it, and when it is due back."
+    href={`${import.meta.env.BASE_URL}recipes/assets/`}
+  />
+  <LinkCard
+    title="Membership and dues"
+    description="Who is a member, until when, who has paid, who needs reminding."
+    href={`${import.meta.env.BASE_URL}recipes/membership/`}
+  />
+  <LinkCard
+    title="A KPI dashboard from imports"
+    description="Numbers from other systems, uploaded monthly, in one picture you trust."
+    href={`${import.meta.env.BASE_URL}recipes/kpi-dashboard/`}
+  />
+  <LinkCard
+    title="A team task tracker"
+    description="Work shaped like your team's process rather than somebody else's."
+    href={`${import.meta.env.BASE_URL}recipes/tasks/`}
+  />
+</CardGrid>
+
+## What they all assume
+
+Everything in [What is built in](../guides/built-in.mdx) is already there, so
+none of these pages mentions signing in, roles, history, downloads, phone
+layouts or backups. They describe only what is particular to the system.
+
+Each one is deliberately small: a first version you can use within days, with
+the second version described in its **Out of scope** section rather than left to
+be discovered.

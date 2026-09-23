@@ -1,0 +1,7 @@
+# Astro's build output and its cache.
+dist/
+.astro/
+
+# Written by scripts/sync-reference.mjs before every dev and build. The source
+# of these pages is docs/*.md; a copy in Git would be a second one to keep true.
+src/content/docs/reference/

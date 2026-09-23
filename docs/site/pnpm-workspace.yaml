@@ -1,0 +1,10 @@
+# This folder is its own small project, not a member of the repository.
+#
+# Without this file pnpm walks up, finds the root pnpm-workspace.yaml, decides
+# docs/site is not one of its packages, and installs the repository instead —
+# so `pnpm --dir docs/site install` quietly does the wrong thing. The file is
+# the anchor: the site installs into docs/site/node_modules with a lockfile of
+# its own, and nothing the app depends on can drift into the documentation.
+allowBuilds:
+  esbuild: true
+  sharp: true
