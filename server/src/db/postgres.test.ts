@@ -33,8 +33,11 @@ describe(
   { skip: live ? false : 'set TEST_POSTGRES=1 and TEST_DATABASE_URL' },
   () => {
     it('migrates from nothing, pages a list, and hands one job to one worker', async () => {
-      // Imported here rather than at the top so that a skipped run does not try
-      // to open a connection that is not there.
+      // Opt this process in before anything reads the config: only this file
+      // may point at the shared CI database (see forTests in config.ts). Then
+      // import, rather than at the top, so a skipped run never opens a
+      // connection that is not there.
+      process.env.TEST_DATABASE_OPT_IN = '1';
       const { handle, db } = await import('./index.ts');
       const { migrateDb, schemaVersion } = await import('./migrate.ts');
       const { items, jobs } = await import('./schema.ts');

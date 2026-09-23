@@ -95,10 +95,14 @@ function forTests(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     ...rest,
     NODE_ENV: 'test',
     DATA_DIR: dataDir,
-    // The one test run that wants a real PostgreSQL says so deliberately,
-    // with its own variable, so no stray `DATABASE_URL` can point a test suite
-    // at a database somebody cares about.
-    ...(env.TEST_POSTGRES === '1' && env.TEST_DATABASE_URL
+    // The one test file that wants a real PostgreSQL says so deliberately, by
+    // setting TEST_DATABASE_OPT_IN in its own process before it imports this
+    // module. CI sets TEST_POSTGRES and TEST_DATABASE_URL for the whole run,
+    // and without the opt-in every test file would share that one database
+    // while running two at a time — the first CI run failed on exactly that,
+    // with concurrent migrations tripping over each other. Every other file
+    // keeps its private in-memory PGlite.
+    ...(env.TEST_POSTGRES === '1' && env.TEST_DATABASE_URL && env.TEST_DATABASE_OPT_IN === '1'
       ? { DATABASE_URL: env.TEST_DATABASE_URL }
       : {}),
   };
