@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { UserPlus, Users } from 'lucide-react';
-import { page as pageOf, Role, User } from '@shared/schemas';
+import { Role, User } from '@shared/schemas';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -29,8 +29,7 @@ import { api, fieldErrors } from '@/lib/api';
 import { isOwner, useMe } from '@/lib/auth';
 import { formatRelative } from '@/lib/format';
 import { t } from '@/lib/i18n';
-
-const UserPage = pageOf(User);
+import { useUsers, usersQueryKey } from '@/lib/users';
 
 export const Route = createFileRoute('/people')({ component: People });
 
@@ -44,14 +43,14 @@ function People() {
   const me = useMe();
   const owner = isOwner(me.data?.role);
   const queryClient = useQueryClient();
-  const people = useQuery({
-    queryKey: ['users'],
-    queryFn: () => api.get('/api/users', UserPage),
-  });
+  const people = useUsers();
+  // A list that could not be read is not an empty list. The route's error
+  // screen shows the server's sentence and the reference to quote.
+  if (people.isError) throw people.error;
 
   const change = async (id: string, patch: { role?: Role; active?: boolean }) => {
     await api.patch(`/api/users/${id}`, User, patch);
-    await queryClient.invalidateQueries({ queryKey: ['users'] });
+    await queryClient.invalidateQueries({ queryKey: usersQueryKey });
   };
 
   return (
@@ -148,7 +147,7 @@ function InviteDialog() {
     setErrors({});
     try {
       await api.post('/api/users', User, { name: name.trim(), email: email.trim(), role });
-      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey });
       toast.success(t('people.sent', { email }));
       setOpen(false);
       setName('');

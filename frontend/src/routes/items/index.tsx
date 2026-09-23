@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { ChevronRight, ListChecks, Plus, SearchX } from 'lucide-react';
 import { z } from 'zod';
-import { ItemPage, ItemStatus, page as pageOf, User, type Item } from '@shared/schemas';
+import { ItemPage, ItemStatus, type Item } from '@shared/schemas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,6 +22,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { formatDate, formatNumber, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { isOverdue, statusLabel, statusTone } from '@/lib/items';
+import { useUsers } from '@/lib/users';
 import { cn } from '@/lib/utils';
 
 // The filters live in the address, not in a component's memory: a filtered
@@ -36,7 +37,6 @@ const Search = z.object({
 });
 export type ItemsSearch = z.infer<typeof Search>;
 
-const UserPage = pageOf(User);
 const PAGE_SIZE = 25;
 
 export const Route = createFileRoute('/items/')({
@@ -72,10 +72,9 @@ function Items() {
     return () => clearTimeout(timer);
   }, [typed, search.q, navigate]);
 
-  const people = useQuery({
-    queryKey: ['users'],
-    queryFn: () => api.get('/api/users', UserPage),
-  });
+  // A viewer may not read the list of people, so the filter offers only
+  // "Anyone" to them rather than asking and being refused.
+  const people = useUsers({ enabled: mayEdit });
 
   const list = useInfiniteQuery({
     queryKey: ['items', search],

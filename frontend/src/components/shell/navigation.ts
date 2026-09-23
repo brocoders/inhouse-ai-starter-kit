@@ -11,18 +11,24 @@ export type Screen = {
   icon: LucideIcon;
   /** Shown only to an owner. */
   ownerOnly?: boolean;
+  /** Shown to a member or an owner; the server refuses a viewer the data. */
+  membersOnly?: boolean;
 };
 
 export const screens: Screen[] = [
   { to: '/', labelKey: 'nav.home', icon: House },
   { to: '/items', labelKey: 'nav.items', icon: ListChecks },
-  { to: '/people', labelKey: 'nav.people', icon: Users },
+  { to: '/people', labelKey: 'nav.people', icon: Users, membersOnly: true },
   { to: '/system', labelKey: 'nav.health', icon: Activity, ownerOnly: true },
   { to: '/account', labelKey: 'nav.account', icon: UserCircle },
 ];
 
 export function visibleScreens(role: Role | undefined): Screen[] {
-  return screens.filter((screen) => !screen.ownerOnly || role === 'owner');
+  return screens.filter((screen) => {
+    if (screen.ownerOnly) return role === 'owner';
+    if (screen.membersOnly) return role === 'owner' || role === 'member';
+    return true;
+  });
 }
 
 export function screenLabel(screen: Screen): string {

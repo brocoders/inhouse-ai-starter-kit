@@ -61,7 +61,11 @@ describe('the typed client the screens use', () => {
     assert.equal(invited.status, 201);
     assert.equal((await invited.json()).role, 'member');
 
+    // A page, like every other list — not a bare array the screens would
+    // fail to read.
     const everybody = await (await client.api.users.$get()).json();
-    assert.ok(everybody.some((person) => person.email === 'new@example.com'));
+    assert.equal(everybody.total, 2);
+    assert.equal(everybody.nextCursor, null);
+    assert.ok(everybody.rows.some((person) => person.email === 'new@example.com'));
   });
 });

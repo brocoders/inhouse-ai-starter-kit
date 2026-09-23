@@ -210,31 +210,40 @@ function fail(kind: string, message: string, status: number): Response {
   return json({ kind, message, requestId: 'mock' }, status);
 }
 
+/**
+ * The same answer `server/src/routes/items.ts` gives, rule for rule: title or
+ * notes for the search, "overdue" and "within a week" counted from today
+ * whatever the status, newest first with the id breaking a tie, and a cursor
+ * nobody recognises answered with an empty page rather than the first one.
+ * A screenshot of the mock is only worth taking if it shows the real order.
+ */
 function listItems(params: URLSearchParams) {
   const q = (params.get('q') ?? '').trim().toLowerCase();
   const status = params.get('status');
   const due = params.get('due');
   const assigneeId = params.get('assigneeId');
   const today = day(0);
-  const weekAway = day(7);
+  const weekEnd = day(6);
   let rows = items.filter((item) => {
-    if (q && !`${item.title} ${item.notes ?? ''}`.toLowerCase().includes(q)) return false;
+    if (q && !item.title.toLowerCase().includes(q) && !(item.notes ?? '').toLowerCase().includes(q))
+      return false;
     if (status && item.status !== status) return false;
     if (assigneeId && item.assigneeId !== assigneeId) return false;
     if (due === 'none' && item.dueOn !== null) return false;
-    if (due === 'overdue' && !(item.dueOn && item.dueOn < today && item.status === 'open'))
-      return false;
-    if (due === 'week' && !(item.dueOn && item.dueOn >= today && item.dueOn <= weekAway))
+    if (due === 'overdue' && !(item.dueOn && item.dueOn < today)) return false;
+    if (due === 'week' && !(item.dueOn && item.dueOn >= today && item.dueOn <= weekEnd))
       return false;
     return true;
   });
   rows = [...rows].sort(
-    (a, b) => (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999') || a.id.localeCompare(b.id),
+    (a, b) => b.createdAt.localeCompare(a.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   );
   const total = rows.length;
-  const limit = Math.min(200, Number(params.get('limit') ?? 25) || 25);
+  const limit = Math.min(200, Number(params.get('limit') ?? 50) || 50);
   const cursor = params.get('cursor');
-  const start = cursor ? rows.findIndex((row) => row.id === cursor) + 1 : 0;
+  const at = cursor ? rows.findIndex((row) => row.id === cursor) : -1;
+  if (cursor && at < 0) return { rows: [], total, nextCursor: null };
+  const start = at + 1;
   const page = rows.slice(start, start + limit);
   const nextCursor = start + limit < total ? (page[page.length - 1]?.id ?? null) : null;
   return { rows: page, total, nextCursor };
@@ -309,14 +318,22 @@ async function answer(url: URL, request: Request): Promise<Response | null> {
   }
 
   if (path === '/api/audit') {
+    const entity = url.searchParams.get('entity');
     const entityId = url.searchParams.get('entityId');
-    const rows = entityId ? audit.filter((event) => event.entityId === entityId) : audit;
+    const rows = audit.filter(
+      (event) => (!entity || event.entity === entity) && (!entityId || event.entityId === entityId),
+    );
     const limit = Number(url.searchParams.get('limit') ?? 20) || 20;
     return json({ rows: rows.slice(0, limit), total: rows.length, nextCursor: null });
   }
 
-  if (path === '/api/users' && method === 'GET')
-    return json({ rows: users, total: users.length, nextCursor: null });
+  // One page of everybody, by name — the server's `UserPage`.
+  if (path === '/api/users' && method === 'GET') {
+    const rows = [...users].sort((a, b) =>
+      a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : 1,
+    );
+    return json({ rows, total: rows.length, nextCursor: null });
+  }
   if (path === '/api/users' && method === 'POST') {
     const input = await body();
     const created: User = {

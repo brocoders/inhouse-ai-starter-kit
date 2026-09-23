@@ -1,14 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { page as pageOf, User, type Item, type ItemInput } from '@shared/schemas';
+import { type Item, type ItemInput } from '@shared/schemas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Choice, FormField } from '@/components/inhouse';
-import { api, fieldErrors } from '@/lib/api';
+import { fieldErrors } from '@/lib/api';
 import { t } from '@/lib/i18n';
-
-const UserPage = pageOf(User);
+import { useUsers } from '@/lib/users';
 
 /**
  * The form both the new-item screen and the record page use.
@@ -37,10 +35,7 @@ export function ItemForm({
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const people = useQuery({
-    queryKey: ['users'],
-    queryFn: () => api.get('/api/users', UserPage),
-  });
+  const people = useUsers();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

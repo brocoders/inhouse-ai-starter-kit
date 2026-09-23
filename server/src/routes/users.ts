@@ -23,6 +23,7 @@ import {
   UpdateUserInput,
   type Me,
   type User,
+  type UserPage,
 } from '../../../shared/schemas.ts';
 import { auth, requireRole, type AppEnv } from '../auth.ts';
 import { config } from '../config.ts';
@@ -93,8 +94,13 @@ export const usersRoutes = new Hono<AppEnv>()
     return c.json(toMe(after));
   })
   .get('/users', requireRole('member'), async (c) => {
-    const rows = await db.select().from(user).orderBy(asc(user.name));
-    return c.json(rows.map(toUser));
+    const rows = await db.select().from(user).orderBy(asc(user.name), asc(user.id));
+    const body: z.infer<typeof UserPage> = {
+      rows: rows.map(toUser),
+      total: rows.length,
+      nextCursor: null,
+    };
+    return c.json(body);
   })
   .post('/users', requireRole('owner'), zValidator('json', InviteInput, orFail), async (c) => {
     const input = c.req.valid('json');

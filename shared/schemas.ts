@@ -44,6 +44,10 @@ export const User = z.object({
   createdAt: z.iso.datetime(),
 });
 export type User = z.infer<typeof User>;
+// The list of people speaks the same page grammar as every other list, so a
+// screen reads `rows` whether it asks for items or for people. It is one page
+// with no cursor: a team this app is built for fits on it.
+export const UserPage = page(User);
 
 export const Me = User.extend({ locale: z.string(), timeZone: z.string() });
 export type Me = z.infer<typeof Me>;
