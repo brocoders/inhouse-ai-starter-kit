@@ -190,7 +190,11 @@ step "the application's folders"
 # repoints at releases/<sha>; if it existed as a directory, the release would
 # quietly create a link *inside* it and the running version would never change.
 install -d -m 755 -o deploy -g deploy "$dir" "$dir/releases"
-install -d -m 700 -o deploy -g deploy "$backups"
+# 755, not 700: the app container runs as its own unprivileged user and lists
+# this folder (read-only) to warn when the newest dump is too old. Listing
+# shows names and ages only — every dump inside is written mode 600, readable
+# by deploy alone.
+install -d -m 755 -o deploy -g deploy "$backups"
 if [ ! -e "$dir/backups" ]; then
 	ln -s "$backups" "$dir/backups"
 	chown -h deploy:deploy "$dir/backups"
@@ -199,10 +203,24 @@ say "$dir/releases for the code, $backups for the nightly database dumps"
 
 step "the settings file"
 env_file=$dir/.env
+# Two kinds of fact, two homes. This file holds secrets and what only this
+# server knows — its short name, its backup folder — and is written once. The
+# facts about the app (the name people see, its time zone and locale) are not
+# here: deploy/release.mjs reads them from inhouse.config.json and hands them to
+# the containers on every release, so the server always says what the
+# repository says and there is no second copy to drift.
 if [ -f "$env_file" ]; then
-	say "already done — $env_file left exactly as it is"
+	say "already done — $env_file kept; no existing line is changed"
 	say "(re-running never rewrites it: that would change the database password"
 	say " out from under the database and lock the app out of its own data)"
+	# Lines added by later versions of this script, appended only when absent.
+	# Neither is a secret, and a release refuses to start without them.
+	for line in "APP_SLUG=$app" "BACKUP_HOST_DIR=$backups"; do
+		if ! grep -q "^${line%%=*}=" "$env_file"; then
+			printf '%s\n' "$line" >>"$env_file"
+			say "added the missing line $line"
+		fi
+	done
 else
 	# openssl rand, not a hand-picked string: these are never typed by a person
 	# and never need to be remembered, so they may as well be unguessable.
@@ -211,10 +229,18 @@ else
 		# Settings for $app. Written by deploy/server-setup.sh on $(date -u +%Y-%m-%d).
 		# Readable only by the deploy user. Never copy this file into Git.
 
-		APP_NAME=$app
+		# This server's short name. It prefixes every container and volume, the
+		# database's included, so it must never change once there is data.
+		APP_SLUG=$app
 		APP_DOMAIN=$domain
 		APP_URL=https://$domain
 		BETTER_AUTH_URL=https://$domain
+		# Where the nightly dumps go. The app reads it (read-only) to warn when
+		# the newest dump is more than a day and a half old.
+		BACKUP_HOST_DIR=$backups
+
+		# The app's name, time zone and locale are deliberately not here: every
+		# release copies them from inhouse.config.json in the repository.
 
 		# Machine-generated. POSTGRES_PASSWORD is the database's own password: once
 		# the database exists, changing this line alone locks the app out of it.

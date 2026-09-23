@@ -12,13 +12,24 @@
 # would otherwise read by itself, so the file holding POSTGRES_PASSWORD has to
 # be named again beside the one holding APP_RELEASE.
 #
+# The two files are two homes for two kinds of fact. The server's .env holds
+# secrets and what only the server knows (its name, its backup folder); it is
+# written once by deploy/server-setup.sh. The release file holds the commit and
+# the facts about the app — name, time zone, locale — which deploy/release.mjs
+# copies from inhouse.config.json on every release, so the server always says
+# what the repository says.
+#
 # Relative paths below resolve against the project directory (/opt/<app> on the
 # server), not against this file. That is deliberate for ./Caddyfile — it must
 # be the same file across releases so Caddy is never restarted by a release —
 # and it is why the build context is $APP_SOURCE instead of ".": the source of
 # the release being built lives in releases/<sha>, not in the project directory.
 
-name: ${APP_NAME:-inhouse}
+# The project name prefixes every container and volume — pgdata becomes
+# <name>_pgdata — so it must never change on a server that has data. It is the
+# short lowercase name server-setup.sh was given, not APP_NAME: that is the
+# name people see, may have capitals and spaces, and may be renamed at will.
+name: ${APP_SLUG:-inhouse}
 
 services:
   app:
@@ -35,11 +46,27 @@ services:
       PORT: '3000'
       DATA_DIR: /data
       APP_RELEASE: ${APP_RELEASE:-dev}
+      # The facts about the app. Named here, and not left to env_file, because
+      # they arrive in the release file — which Compose reads to fill in the
+      # values in this file but does not hand to the container. These lines also
+      # win over any stale copy in an older server's .env.
+      APP_NAME: ${APP_NAME:-InHouse}
+      APP_TIME_ZONE: ${APP_TIME_ZONE:-UTC}
+      APP_LOCALE: ${APP_LOCALE:-en-US}
       # Assembled here rather than stored in .env so there is one place holding
-      # the password and one spelling of the database's address.
-      DATABASE_URL: postgres://app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is missing; it belongs in .env}@db:5432/app
+      # the password and one spelling of the database's address. APP_DATABASE
+      # is set only by the release's migration rehearsal, to point one
+      # throwaway container at the rehearsal copy without the password ever
+      # appearing on a command line.
+      DATABASE_URL: postgres://app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is missing; it belongs in .env}@db:5432/${APP_DATABASE:-app}
+      # The health page warns when the newest file here is more than a day and a
+      # half old. Read-only: the app looks at the dumps, it never writes them.
+      BACKUP_DIR: /backups
     volumes:
       - appdata:/data
+      # /var/backups/<app> on the server, written into .env by server-setup.sh.
+      # On a laptop, a folder under data/, which Git ignores.
+      - ${BACKUP_HOST_DIR:-./data/backups}:/backups:ro
     depends_on:
       db:
         condition: service_healthy

@@ -36,11 +36,16 @@ compose() {
 
 password=$(openssl rand -hex 24)
 
-# -v passes the password as a psql variable so it is quoted by psql's own %L
-# rather than pasted into SQL by this script. The file is fed on stdin; nothing
-# writes the password to disk on the server.
-compose exec -T db psql -U app -d app -q \
-	-v ON_ERROR_STOP=1 -v readonly_password="$password" <"$sql"
+# The password reaches psql on stdin, as a \set line ahead of the SQL file, and
+# psql's own %L quotes it from there. Not as `-v readonly_password=...`: every
+# argument of a running command is readable by anyone on the machine through
+# `ps`, for as long as the command runs. printf is a shell builtin, so it never
+# appears there either, and nothing writes the password to disk. It is 48 hex
+# characters, so the single quotes around it need no escaping.
+{
+	printf "\\set readonly_password '%s'\n" "$password"
+	cat "$sql"
+} | compose exec -T db psql -U app -d app -q -v ON_ERROR_STOP=1
 
 cat <<-NEXT
 
