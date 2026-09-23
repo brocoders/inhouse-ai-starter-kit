@@ -102,6 +102,12 @@ export const en = {
   'items.dueOn': 'Due day',
   'items.created': 'Added {when}',
   'items.saved': 'Saved',
+  'items.csv': 'Download CSV',
+  'items.csvPreparing': 'Preparing…',
+  'items.csvCreated': 'Added',
+  'items.csvCapped':
+    'The file has the first {shown} of {total}. Narrow the filters to get the rest.',
+  'items.conflict': 'Someone changed this while you were editing — reload to see their version.',
   'items.deleted': 'Deleted',
   'items.deleteTitle': 'Delete this item?',
   'items.deleteBody': 'It goes from every list. The change stays in the history.',

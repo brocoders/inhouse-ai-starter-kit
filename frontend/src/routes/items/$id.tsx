@@ -31,7 +31,11 @@ function ItemPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const me = useMe();
-  const [editing, setEditing] = useState(false);
+  // Editing remembers the version it started from. The record behind it can
+  // refresh while the form is open — another tab, a pull to refresh — and the
+  // version the person was looking at when they began is the one that counts.
+  const [editingFrom, setEditingFrom] = useState<string | null>(null);
+  const editing = editingFrom !== null;
   const fileInput = useRef<HTMLInputElement>(null);
 
   const mayEdit = canEdit(me.data?.role);
@@ -94,7 +98,7 @@ function ItemPage() {
           <>
             <RefreshButton />
             {mayEdit && !editing && (
-              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              <Button size="sm" variant="outline" onClick={() => setEditingFrom(record.updatedAt)}>
                 {t('action.edit')}
               </Button>
             )}
@@ -127,12 +131,18 @@ function ItemPage() {
             <ItemForm
               item={record}
               submitLabel={t('action.save')}
-              onCancel={() => setEditing(false)}
+              onCancel={() => setEditingFrom(null)}
               onSubmit={async (input) => {
-                await api.patch(`/api/items/${id}`, Item, input);
+                // The copy this form was opened on. If somebody has saved
+                // since, the server answers `conflict` rather than letting this
+                // save quietly undo theirs.
+                await api.patch(`/api/items/${id}`, Item, {
+                  ...input,
+                  updatedAt: editingFrom ?? record.updatedAt,
+                });
                 await refreshRecord();
                 toast.success(t('items.saved'));
-                setEditing(false);
+                setEditingFrom(null);
               }}
             />
           ) : (
