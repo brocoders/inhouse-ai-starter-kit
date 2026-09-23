@@ -24,7 +24,7 @@ const complains = (rel, text, about) => {
 test('raw colours are refused outside the registry', () => {
   complains(SCREEN, 'const c = "#ff8800";', 'raw colour');
   complains(SCREEN, 'const c = "#f80";', 'raw colour');
-  clean(SCREEN, '<a href="#main">skip</a>');
+  clean(SCREEN, '<a href="#main">{t(\'skip\')}</a>');
   clean(UI, 'const c = "#ff8800";');
 });
 
@@ -76,8 +76,30 @@ test('overlays have to be scrollable', () => {
 });
 
 test('a form needs a submit button', () => {
-  complains(SCREEN, '<form onSubmit={save}><Button>Save</Button></form>', 'type="submit"');
-  clean(SCREEN, '<form onSubmit={save}><Button type="submit">Save</Button></form>');
+  complains(SCREEN, '<form onSubmit={save}><Button>{t("save")}</Button></form>', 'type="submit"');
+  clean(SCREEN, '<form onSubmit={save}><Button type="submit">{t("save")}</Button></form>');
+});
+
+test('words typed straight into JSX go through t()', () => {
+  complains(SCREEN, '<Button type="submit">Save</Button>', 'render it with t()');
+  complains(
+    SCREEN,
+    '<p className="text-sm">\n  Choose the days to show.\n</p>',
+    'render it with t()',
+  );
+  complains(
+    'frontend/src/components/inhouse/period-picker.tsx',
+    '<Label>From</Label>',
+    'render it with t()',
+  );
+  clean(SCREEN, '<Button type="submit">{t(\'action.save\')}</Button>');
+  clean(SCREEN, '<span>{count} ·</span>');
+  clean(SCREEN, 'const x = items.map((i) => i.name);');
+  clean(SCREEN, "cn(value > 0 && 'text-positive', signed && value < 0 && 'text-negative')");
+  clean(SCREEN, 'const [v, setV] = useState<string>("");');
+  // The registry and non-screen code are out of scope.
+  clean(UI, '<Button>Close</Button>');
+  clean('frontend/src/components/shell/nav.tsx', '<a>Home</a>');
 });
 
 test('the generated route tree is not ours to lint', () => {

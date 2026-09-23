@@ -160,8 +160,14 @@ Fixed so the agent never debates it. Versions verified in the research pass
 ## Rules, checks and instructions
 
 - Anything mechanical is checked by a script triggered by hooks and repeated
-  in CI: formatting, instruction-file size limits, design tokens, secrets,
-  bundle size, migration idempotency. The AI is kept for judgment.
+  in CI: formatting, instruction-file size limits, design tokens, text typed
+  into a screen instead of going through `t()`, secrets, bundle size. The AI is
+  kept for judgment. Migrations are the one rule with three fences: the write
+  hook refuses an edit to an existing migration, a permission rule asks before
+  one, and `check-repo.mjs` fails when a `server/drizzle/*.sql` file that is on
+  `main` differs from it (skipped in a clone without `main`, such as CI's
+  shallow checkout). The migrator records what it applied, so a migration runs
+  once; "safe to run twice" is the author's job, not a checker's.
 - Instructions are compact and never repeat each other: one home per rule;
   `AGENTS.md` under 150 lines holds facts; procedures live in skills;
   folder-specific constraints in `.claude/rules/`; a script fails the check

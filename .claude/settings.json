@@ -3,15 +3,43 @@
   "permissions": {
     "allow": [
       "Bash(pnpm *)",
-      "Bash(node *)",
+      "Bash(node scripts/*)",
+      "Bash(node --test*)",
+      "Bash(node server/src/*)",
+      "Bash(node --run *)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
       "Bash(git add *)",
       "Bash(git commit *)"
     ],
-    "ask": ["Bash(git push *)", "Bash(gh pr *)", "Bash(pnpm release *)", "Bash(ssh *)"],
-    "deny": ["Read(./.env)", "Read(./data/**)", "Bash(sudo *)"]
+    "ask": [
+      "Bash(git push *)",
+      "Bash(gh pr *)",
+      "Bash(pnpm release *)",
+      "Bash(pnpm run release *)",
+      "Bash(pnpm exec node deploy/*)",
+      "Bash(node --run release*)",
+      "Bash(node deploy/*)",
+      "Bash(node ./deploy/*)",
+      "Bash(ssh *)",
+      "Edit(/deploy/**)",
+      "Edit(/compose.yaml)",
+      "Edit(/Caddyfile)",
+      "Edit(/Dockerfile)",
+      "Edit(/.claude/settings.json)",
+      "Edit(/frontend/src/components/ui/**)",
+      "Edit(/server/drizzle/*.sql)",
+      "Edit(/pnpm-lock.yaml)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./data/**)",
+      "Bash(sudo *)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(!.env.example)"
+    ]
   },
   "sandbox": {
     "enabled": true,
@@ -23,10 +51,17 @@
     "network": {
       "allowedDomains": [
         "github.com",
+        "api.github.com",
+        "*.githubusercontent.com",
         "registry.npmjs.org",
         "*.npmjs.org",
+        "nodejs.org",
         "api.anthropic.com",
-        "resend.com"
+        "resend.com",
+        "api.resend.com",
+        "ui.shadcn.com",
+        "cdn.playwright.dev",
+        "playwright.download.prss.microsoft.com"
       ]
     }
   },
@@ -78,7 +113,7 @@
     ],
     "SessionStart": [
       {
-        "matcher": "startup|resume|compact",
+        "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
           {
             "type": "command",

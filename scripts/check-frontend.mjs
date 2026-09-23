@@ -46,6 +46,14 @@ const INTL = /\bIntl\.[A-Z]/;
 // The primitives come from the registry and are never edited, so the bound
 // belongs on the call.
 const OVERLAY = /<(?:Dialog|Sheet)Content\b[^>]*>/gs;
+// Words a person reads, typed straight into JSX: `>Save<`. Every such string
+// goes through t() so the app has one place its language lives. A heuristic:
+// text between a tag's `>` and the next `<` with two or more letters, and none
+// of the characters that mean it is code rather than prose (`=>` is not a tag
+// end; `{…}` is an expression, which is where t() already sits; `&&` and `||`
+// are a condition, not a sentence).
+const JSX_TEXT = /(?<![=\-])>([^<>{}();=&|]*[A-Za-z][^<>{}();=&|]*[A-Za-z][^<>{}();=&|]*)</g;
+const TRANSLATED = [`${SRC}/routes/`, VOCABULARY];
 
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
@@ -108,6 +116,15 @@ export function checkSourceFile(rel, text) {
       errors.push(
         `${rel}:${lineOf(text, opening.index)}: dialog and sheet content needs max-h-[90dvh] overflow-y-auto; ` +
           'it is fixed, so content taller than the screen cannot be scrolled to',
+      );
+    }
+  }
+  if (!isUi && TRANSLATED.some((dir) => rel.startsWith(dir)) && rel.endsWith('.tsx')) {
+    for (const m of text.matchAll(JSX_TEXT)) {
+      const words = m[1].trim().replace(/\s+/g, ' ');
+      errors.push(
+        `${rel}:${lineOf(text, m.index)}: "${words.length > 40 ? words.slice(0, 40) + '…' : words}" ` +
+          'is typed into the screen; put it in the dictionary and render it with t()',
       );
     }
   }
