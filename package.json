@@ -16,7 +16,7 @@
     "build:frontend": "vite build --config frontend/vite.config.ts && tsc -p frontend/tsconfig.json --noEmit",
     "start": "node --env-file-if-exists=.env dist/server/src/main.js",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p frontend/tsconfig.json --noEmit",
-    "test": "node --test --test-concurrency=2 'server/**/*.test.ts' 'scripts/**/*.test.mjs'",
+    "test": "node --test --test-concurrency=2 'server/**/*.test.ts' 'frontend/src/**/*.test.ts' 'scripts/**/*.test.mjs'",
     "test:postgres": "node server/src/test/require-postgres.mjs && TEST_POSTGRES=1 node --test 'server/**/*.test.ts'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
