@@ -1,7 +1,8 @@
 -- A database login that can look but not touch.
 --
--- Applied by deploy/db-readonly.sh, which generates the password and passes it
--- in as :readonly_password. Run it again whenever new tables appear.
+-- Applied by deploy/db-readonly.sh, which generates the password and sets it as
+-- :readonly_password on stdin, ahead of this file — never on a command line,
+-- where `ps` would show it. Run it again whenever new tables appear.
 --
 -- Why it exists: now and then a question can only be answered against the live
 -- data — "how many of these are still open right now?" — and the alternative is

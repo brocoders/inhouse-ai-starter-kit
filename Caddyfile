@@ -17,10 +17,12 @@
 {$APP_DOMAIN} {
 	encode zstd gzip
 
-	# The only security header Caddy sets. The app sets the rest itself (Hono
-	# middleware), and a header written in two places is a header that will one
-	# day disagree with itself. HSTS is the exception because it is about the
-	# connection, which is Caddy's half of the job, not the app's.
+	# The split: Caddy owns HSTS, the app owns every other security header
+	# (Hono middleware) and does not send HSTS itself. A header written in two
+	# places is a header that will one day disagree with itself. HSTS lives here
+	# because it is about the connection — Caddy's half of the job — and so that
+	# it is never sent over the plain HTTP of `pnpm dev`, where it would pin a
+	# browser to HTTPS for a year on localhost.
 	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
 	# Attachments are capped at 20 MB by the app; 25 MB here leaves room for the

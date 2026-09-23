@@ -52,9 +52,16 @@ dir=${APP_DIR:-/opt/$app}
 out=${BACKUP_DIR:-/var/backups/$app}
 
 if [ "$dump" = "--list" ]; then
-	echo "Dumps in $out, newest last:"
-	ls -lh "$out"/app-*.dump 2>/dev/null | awk '{printf "  %s  %s %s %s  %s\n", $5, $6, $7, $8, $9}' ||
+	# app-<date>T<time>Z.dump is a nightly or pre-release dump;
+	# pre-restore-app-... is the copy this script took before a restore.
+	echo "Dumps in $out, oldest first:"
+	shopt -s nullglob
+	dumps=("$out"/app-*.dump "$out"/pre-restore-app-*.dump)
+	if [ ${#dumps[@]} -eq 0 ]; then
 		echo "  (none yet)"
+		exit 0
+	fi
+	ls -lhtr "${dumps[@]}" | awk '{printf "  %6s  %s %s %s  %s\n", $5, $6, $7, $8, $9}'
 	exit 0
 fi
 
@@ -70,7 +77,21 @@ compose() {
 	fi
 	docker compose "${args[@]}" "$@"
 }
-psql_app() { compose exec -T db psql -U app -d postgres -v ON_ERROR_STOP=1 "$@"; }
+# </dev/null: `compose exec` forwards stdin even with -T, and this script is
+# sometimes fed to bash over SSH, where stdin is the rest of the script.
+psql_app() { compose exec -T db psql -U app -d postgres -v ON_ERROR_STOP=1 "$@" </dev/null; }
+
+# Before anything else — before the prompt, the safety copy, stopping the app or
+# dropping a database — make sure the file is a dump pg_restore can read. A
+# truncated copy or the wrong file is refused here, while nothing has changed.
+echo "==> checking that $(basename "$dump") is a readable dump"
+if ! compose exec -T db pg_restore --list <"$dump" >/dev/null; then
+	echo "refusing: pg_restore cannot read $dump — nothing was changed" >&2
+	exit 65
+fi
+# Held open from here on. The safety copy below prunes dumps older than
+# fourteen days, and this one may be among them; an open file survives that.
+exec 3<"$dump"
 
 if [ -n "$into_live" ]; then
 	target=app
@@ -81,7 +102,8 @@ if [ -n "$into_live" ]; then
 		  Everything recorded since that dump was taken will be gone.
 
 		  The app will be stopped first and a dump of the current data written to
-		  $out, so this is undoable — but only if that dump succeeds.
+		  $out/pre-restore-app-<time>.dump, so this is undoable — but only
+		  if that dump succeeds, and nothing happens if it does not.
 
 	WARNING
 	printf 'Type the application name (%s) to continue: ' "$app" >&2
@@ -105,9 +127,18 @@ fi
 	exit 64
 }
 
+safety=
 if [ -n "$into_live" ]; then
 	echo "==> taking a dump of the current live data first"
-	bash "$(dirname "$0")/backup.sh" "$app"
+	# Named pre-restore-app-<time>.dump, so it can never be the file being
+	# restored. Under set -e a failed safety copy stops everything here.
+	result=$(bash "$(dirname "$0")/backup.sh" "$app" --pre-restore)
+	echo "$result"
+	safety=$(printf '%s\n' "$result" | sed -n 's/.*"file":"\([^"]*\)".*/\1/p' | tail -1)
+	[ -n "$safety" ] || {
+		echo "refusing: the safety copy did not report a file — nothing was changed" >&2
+		exit 75
+	}
 	echo "==> stopping the app so nothing writes during the restore"
 	compose stop app
 fi
@@ -117,20 +148,26 @@ psql_app -c "DROP DATABASE IF EXISTS $target;"
 psql_app -c "CREATE DATABASE $target OWNER app;"
 
 echo "==> restoring $(basename "$dump") into $target"
-# --clean --if-exists so a re-run into an existing database works too;
 # --no-owner because the dump's owner and this cluster's roles need not match.
-# pg_restore reports "already exists" style notices as errors even on a clean
-# run, so its exit status is shown rather than trusted.
-set +e
-compose exec -T db pg_restore --no-owner --clean --if-exists -U app -d "$target" <"$dump"
-status=$?
-set -e
-if [ $status -ne 0 ]; then
-	echo "pg_restore exited $status — read the lines above before trusting this copy" >&2
+# The database was created empty a moment ago, so a sound dump restores without
+# a single error and any error means this copy cannot be trusted.
+if ! compose exec -T db pg_restore --no-owner -U app -d "$target" <&3; then
+	echo >&2
+	echo "pg_restore failed — the errors are above. $target is incomplete." >&2
+	if [ -n "$into_live" ]; then
+		cat >&2 <<-FAILED
+			The app is still stopped, deliberately: starting it on a half-restored
+			database would let it write into that. To put back what was there before:
+
+			  bash $0 $app $safety --into-live
+
+		FAILED
+	fi
+	exit 70
 fi
 
 tables=$(compose exec -T db psql -U app -d "$target" -tAc \
-	"select count(*) from information_schema.tables where table_schema='public'")
+	"select count(*) from information_schema.tables where table_schema='public'" </dev/null)
 echo "==> $target now holds $tables tables"
 
 if [ -n "$into_live" ]; then

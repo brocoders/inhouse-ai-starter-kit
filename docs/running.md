@@ -32,12 +32,17 @@ start with `v24`.
 **2. Put some data in.**
 
 ```sh
-pnpm db:seed --owner
+pnpm db:seed --owner you@example.com "Your Name" --sample
 ```
 
-_You should see_ a line naming the account it created and the address to sign in
-with. This is invented data in a database on your own machine; it never touches
-the server.
+Use your own address and name. `--owner` makes that person the account that can
+invite everybody else; `--sample` adds about forty invented records so the lists
+have something in them.
+
+_You should see_ "Your Name <you@example.com> is now the owner", a count of
+sample items, and then "Sign in here" followed by a link. Keep that link for
+step 3: it works once, within the hour. Run the same command again for a fresh
+one. This is a database on your own machine; it never touches the server.
 
 **3. Start it.**
 
@@ -45,8 +50,8 @@ the server.
 pnpm dev
 ```
 
-_You should see_ two addresses. Open the one on port 5173 in a browser. Sign in
-with the address from step 2.
+_You should see_ two addresses. Open the sign-in link from step 2 in a browser;
+it signs you in and lands on the app at port 5173.
 
 _If this went wrong:_ "port already in use" means a previous `pnpm dev` is still
 running. Close that terminal window, or run `pkill -f vite`.
@@ -162,9 +167,9 @@ EMAIL_FROM=Orders <hello@orders.example.com>
 
 `Ctrl-O`, `Enter`, `Ctrl-X` to save and leave.
 
-_If you skip this:_ nothing breaks. The app runs and writes the e-mails it would
-have sent into its log. Sign-in links will not arrive, so you will need the
-password account the seed made.
+_If you skip this:_ nothing breaks. The app runs, and each e-mail it would have
+sent is written to a file inside the app's container instead; its log names the
+file. Sign-in links will not arrive in anyone's inbox until you fill these in.
 
 ### 5. Release
 
@@ -174,7 +179,8 @@ pnpm release $(git rev-parse HEAD)
 
 Read the next section for what each line means. The first one takes longer than
 the rest — it builds everything from scratch and waits for Caddy to fetch an
-HTTPS certificate.
+HTTPS certificate. It also has nothing to back up yet, and says so: the backup
+and the rehearsal are skipped, and the database is created instead.
 
 _You should see_, at the end, `Released … to orders.example.com` and an
 invitation to go and look at it.
@@ -191,31 +197,43 @@ pnpm release <the 40-character commit id>
 it in the address bar. Add `--dry-run` to see the plan without doing anything.
 
 It runs on your machine and drives the server over SSH. Every step is a gate:
-**until step 9, a failure leaves the previous version running and the database
-exactly as it was.** The script stops, tells you which gate refused and why, and
-tidies up after itself whether it succeeded or not.
+**until the switch, a failure leaves the previous version running and the
+database exactly as it was.** The script stops, tells you which gate refused and
+why, and tidies up after itself whether it succeeded or not — Ctrl-C included.
+Only one release runs at a time; a second one started meanwhile is refused.
 
 What you will see, and what each line means:
 
-| It prints                                 | What just happened                                                                                                                                                                |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checking that … is on the main branch`   | Only merged work gets released. A commit sitting on a branch is refused.                                                                                                          |
-| `asking … what is running now`            | Reads which version the server is serving.                                                                                                                                        |
-| `replacing …, which … contains`           | The **ancestor guard**: what is running has to be contained in what is going out. This is what stops a release from quietly undoing a newer one. `--allow-rollback` overrides it. |
-| `packed … digest matches on the server`   | The exact commit was packed, sent, and its fingerprint checked on the far side. A transfer that lost bytes stops here rather than looking like a code error twenty minutes later. |
-| `building the image on the server`        | The app is compiled **on the server**, from that archive. Nothing from your laptop goes into what runs.                                                                           |
-| `backup verified`                         | A copy of the database, taken before anything changes, and checked for being a real file rather than an empty one.                                                                |
-| `the migration runs cleanly on real data` | The **rehearsal**: that backup is restored into a scratch database and the schema change is run against it. A migration that only ever ran on an empty database is not proved.    |
-| `schema is up to date`                    | The same change, now on the real database.                                                                                                                                        |
-| `the new container is running`            | **The switch.** The old app stops and the new one starts. Requests arriving in those few seconds wait rather than fail.                                                           |
-| `the app answers /health/ready`           | The site is up.                                                                                                                                                                   |
-| `serving <sha>`                           | And it is the version just sent, not the old one still answering.                                                                                                                 |
-| `releases_removed=… disk=…`               | Old releases, dangling images and dumps over a fortnight old cleared out, and how much disk is left.                                                                              |
-| `Released … in Xm Ys`                     | Done.                                                                                                                                                                             |
+| It prints                                                                           | What just happened                                                                                                                                                                |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checking that … is a commit on the main branch`                                    | Only merged work gets released. A commit sitting on a branch is refused.                                                                                                          |
+| `no other release is running; holding the lock until this one ends`                 | The **lock**: one release at a time. It is let go the moment this one ends, however it ends.                                                                                      |
+| `asking … what is running now`                                                      | Reads which version the server is serving.                                                                                                                                        |
+| `replacing …, which … contains`                                                     | The **ancestor guard**: what is running has to be contained in what is going out. This is what stops a release from quietly undoing a newer one. `--allow-rollback` overrides it. |
+| `nothing is deployed yet — this is the first release`                               | Printed instead, the first time.                                                                                                                                                  |
+| `packed` … `digest matches on the server`                                           | The exact commit was packed, sent, and its fingerprint checked on the far side. A transfer that lost bytes stops here rather than looking like a code error twenty minutes later. |
+| `building the image on the server from this exact commit`                           | The app is compiled **on the server**, from that archive. Nothing from your laptop goes into what runs.                                                                           |
+| `database healthy`                                                                  | The database is up. It is started with the live version's settings, so nothing in the new release touches it before the backup exists.                                            |
+| `backup verified`                                                                   | A copy of the database, taken before anything changes, and checked for being a real, fresh file rather than an empty or old one.                                                  |
+| `the copy is restored  tables=…`                                                    | That backup was restored into a scratch database and it holds real tables. A backup that does not restore, or restores empty, stops the release here.                             |
+| `the migration runs cleanly on real data`                                           | The **rehearsal**: the schema change was run against that copy. A migration that only ever ran on an empty database is not proved.                                                |
+| `the first release has nothing to back up and no data to rehearse the migration on` | Printed instead of the three lines above, the first time only.                                                                                                                    |
+| `schema is up to date`                                                              | The same change, now on the real database.                                                                                                                                        |
+| `the new container is running`                                                      | **The switch.** The old app stops and the new one starts. Requests arriving in those few seconds wait rather than fail.                                                           |
+| `… current now points at …`                                                         | The server now records this version as the live one. That happens at the switch, before the check below, so the record always names what is actually running.                     |
+| `the app answers /health/ready`                                                     | The site is up.                                                                                                                                                                   |
+| `serving …`                                                                         | And it is the version just sent, not the old one still answering.                                                                                                                 |
+| `releases_removed=… dumps_removed=… disk=…`                                         | Old releases, dangling images and dumps over a fortnight old cleared out, and how much disk is left.                                                                              |
+| `Released … in Xm Ys`                                                               | Done.                                                                                                                                                                             |
+| `tidying up on …` / `removed …`                                                     | The temporary files — and the scratch database, if one was left — removed. Printed whenever a release got as far as sending anything, whether it succeeded or not.                |
 
 ### When a release refuses
 
 **"… is not on main"** — merge the branch first, then release the merge commit.
+
+**"another release is running (started …, releasing …)"** — someone (or some
+agent) is releasing right now. Wait for it to finish and run the same command
+again.
 
 **"… does not contain the running release …"** — someone (or some agent) released
 something newer while you were working. Releasing yours would undo theirs. Merge
@@ -226,18 +244,31 @@ The schema change works on an empty database but not on yours. Nothing changed;
 the live app is still serving. The output above the message is what the database
 said.
 
-**"did not answer within two minutes"** — the new version started but is not
-serving. This is after the switch, so the site is down. Read the container's log:
+**"pg_restore could not restore …" or "the rehearsal copy holds no tables"** —
+the backup just taken could not be put back, so nothing could be proved with it.
+Nothing changed. Stop and look at [backups](backups.md) before releasing again:
+right now you do not have a backup you can restore.
+
+**"the new release is serving but did not answer … within two minutes"** — the
+new version started but is not answering. This is after the switch, so the site
+may be down, and the server already records the new version as the live one.
+Investigate before anything else, and do not release again over it until you
+know what is wrong. Read the container's log:
 
 ```sh
 ssh <your server> 'docker logs --tail 50 $(docker ps -q -f name=app)'
 ```
 
-and go back to the previous version:
+and either fix it and release the fix, or go back to the previous version:
 
 ```sh
 pnpm release <the previous commit id> --allow-rollback
 ```
+
+**"interrupted by SIGINT"** — you pressed Ctrl-C. Before the switch nothing
+changed; the script removes what it put on the server and exits. After the
+switch had begun, check which version the server records before you release
+again.
 
 ### Going back on purpose
 
@@ -275,7 +306,8 @@ backup option on.
 ### You only have a database dump
 
 You have a `.dump` file — from the server's `/var/backups/`, or one you copied
-off. Then:
+off. Each is named for the moment it was taken, like
+`app-2026-09-21T031502Z.dump` (03:15:02 UTC on 21 September). Then:
 
 1. **A new server**, Ubuntu 24.04, and the domain's A record pointed at it.
 2. **Set it up**, the same command as before:
@@ -288,15 +320,18 @@ off. Then:
    ```sh
    pnpm release $(git rev-parse HEAD)
    ```
-   You now have a working, empty app.
+   It is the first release on this machine, so it has nothing to back up and
+   says so. You now have a working, empty app.
 4. **Put the data back.** Copy the dump up and restore it over the live database:
    ```sh
-   scp app-2026-09-21.dump deploy@<new IP>:/var/backups/orders/
+   scp app-2026-09-21T031502Z.dump deploy@<new IP>:/var/backups/orders/
    ssh -t deploy@<new IP> 'bash /opt/orders/current/deploy/restore.sh orders \
-     /var/backups/orders/app-2026-09-21.dump --into-live'
+     /var/backups/orders/app-2026-09-21T031502Z.dump --into-live'
    ```
-   It will ask you to type the app's name before it does anything. `-t` on the
-   ssh line is what lets it ask.
+   It first checks the file is a dump it can read, and refuses if not. Then it
+   asks you to type the app's name before it does anything. `-t` on the ssh line
+   is what lets it ask. Before replacing anything it saves the empty app's data
+   as `pre-restore-app-<time>.dump`, beside the others.
 5. **Fill in the e-mail lines again** — step 4 of "Your server, once". They are
    not in the database dump.
 6. **Check one record you recognise**, then tell whoever uses the app what they
