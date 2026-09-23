@@ -17,14 +17,22 @@ euros a month.
 ## The nightly dump
 
 Every night at 03:15 the server writes the whole database into one file in
-`/var/backups/<app>/`, named for the date. Fourteen days are kept; the fifteenth
-night removes the oldest. Each file is a few megabytes for a young app.
+`/var/backups/<app>/`, named for the moment it was taken:
+`app-2026-09-21T031502Z.dump` is 03:15:02 UTC on 21 September. Two dumps on the
+same day are two files; nothing ever overwrites a dump. Files older than
+fourteen days are removed. Each file is a few megabytes for a young app.
 
 A **dump** is one file holding the entire database — every table, every row.
 
 It is also taken once more, out of schedule, immediately before every release,
 which is where it earns its keep most often: the newest dump is always from
-before the last thing that could have broken anything.
+before the last thing that could have broken anything. The release then restores
+that dump into a scratch database and checks it holds tables, so every release
+also proves the newest backup restores. The one exception is the very first
+release: there is no data yet, so it has nothing to back up and says so.
+
+The app itself watches the folder (read-only) and its health page warns when the
+newest dump is more than a day and a half old.
 
 **It is on the same disk as the database.** That is the honest limitation. It
 answers "the migration ate a column" and "somebody deleted the wrong record"
@@ -36,7 +44,9 @@ To see what you have:
 ssh deploy@<your server> 'bash /opt/orders/current/deploy/restore.sh orders --list'
 ```
 
-_You should see_ a dated file for each of the last fourteen days. If the list is
+_You should see_ a file for each of the last fourteen nights, plus one for each
+release, oldest first. Files starting `pre-restore-` are the copies a restore
+takes of the live data just before replacing it — see below. If the list is
 short, or the newest is not from last night, something is wrong — check
 `systemctl status orders-backup.timer` on the server.
 
@@ -74,12 +84,13 @@ touches nothing that is running.
 ssh deploy@<your server>
 ls /var/backups/orders/                     # pick the newest file
 bash /opt/orders/current/deploy/restore.sh orders \
-  /var/backups/orders/app-2026-09-21.dump --into app_check
+  /var/backups/orders/app-2026-09-21T031502Z.dump --into app_check
 ```
 
-_You should see_ it create a separate database called `app_check`, restore into
-it, and print how many tables ended up there — a number in the tens for a small
-app. The live database is not touched; the app keeps serving throughout.
+_You should see_ it check the file is a readable dump, create a separate
+database called `app_check`, restore into it, and print how many tables ended up
+there — a number in the tens for a small app. The live database is not touched;
+the app keeps serving throughout.
 
 Then look inside and check something you recognise:
 
@@ -99,15 +110,21 @@ And throw the copy away:
 drop database app_check;
 ```
 
-_If this went wrong:_ a table count of 0, or pg_restore complaining about
-something other than ownership, means that dump is not usable. Try an older one.
+_If this went wrong:_ "pg_restore cannot read …" means the file is not a dump
+at all — nothing was changed. "pg_restore failed", or a table count of 0, means
+that dump is not usable. Try an older one.
 If none of them restore, stop and fix that before doing anything else — you are
 currently running without a backup and do not know it.
 
 `restore.sh` will also restore **over** the live database, with `--into-live`.
-That one asks you to type the application's name first, and takes a dump of the
-current data before it starts, so the undo exists. It is for rebuilding a server
-or undoing a genuine disaster, not for looking at yesterday's numbers.
+That one checks the dump first, asks you to type the application's name, and
+then saves the current data as `pre-restore-app-<time>.dump` before it replaces
+anything, so the undo exists — and because that copy has its own name, it can
+never overwrite the dump you are restoring, even one taken minutes earlier. If
+the restore itself fails, the app is left stopped rather than started on half a
+database, and the command to put the `pre-restore-` copy back is printed. It is
+for rebuilding a server or undoing a genuine disaster, not for looking at
+yesterday's numbers.
 
 ---
 
