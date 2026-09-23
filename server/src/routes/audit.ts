@@ -19,9 +19,13 @@ export const AuditQuery = ListQuery.extend({
 const after = (cursor: string): SQL =>
   sql`exists (select 1 from ${auditLog} c where c.id = ${cursor} and (${auditLog.at} < c.at or (${auditLog.at} = c.at and ${auditLog.id} > c.id)))`;
 
+// A member or an owner only. The history of a record is not the record: it
+// keeps the full text of what was deleted, and the history of the people list
+// says who holds which role and whose account is off. A viewer sees the
+// records as they are now and nothing behind them.
 export const auditRoutes = new Hono<AppEnv>().get(
   '/',
-  requireRole('viewer'),
+  requireRole('member'),
   zValidator('query', AuditQuery, orFail),
   async (c) => {
     const query = c.req.valid('query');

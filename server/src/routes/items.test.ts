@@ -10,7 +10,7 @@
 // the test says which filter it was.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { after, before, beforeEach, describe, it } from 'node:test';
+import { after, afterEach, before, beforeEach, describe, it } from 'node:test';
 import {
   actAs,
   call,
@@ -25,12 +25,14 @@ import type { ApiError, AuditEvent, Item, ItemListQuery } from '../../../shared/
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import { items, user } from '../db/schema.ts';
+import { config } from '../config.ts';
 import { addDays, calendarDay } from '../time.ts';
 
 type Page = { rows: Item[]; total: number; nextCursor: string | null };
 type Seeded = {
   id: string;
   title: string;
+  notes: string | null;
   status: 'open' | 'done';
   dueOn: string | null;
   assigneeId: string | null;
@@ -62,10 +64,11 @@ async function seedItems(): Promise<void> {
     const dueOn = i % 5 === 0 ? null : addDays(today, [-10, -2, 0, 3, 8, 40][i % 6] ?? 0);
     const assigneeId = i % 4 === 0 ? member.id : i % 4 === 1 ? viewer.id : null;
     const title = i % 7 === 0 ? `Renew the ${i} insurance` : `Task number ${i}`;
+    const notes = i % 6 === 0 ? 'A note mentioning kettle' : null;
     rows.push({
       id,
       title,
-      notes: i % 6 === 0 ? 'A note mentioning kettle' : null,
+      notes,
       status,
       dueOn,
       assigneeId,
@@ -74,7 +77,7 @@ async function seedItems(): Promise<void> {
       createdBy: owner.id,
       updatedBy: owner.id,
     });
-    seeded.push({ id, title, status, dueOn, assigneeId, createdAt });
+    seeded.push({ id, title, notes, status, dueOn, assigneeId, createdAt });
   }
   await db.insert(items).values(rows);
 }
@@ -86,7 +89,12 @@ function oracle(query: Partial<ItemListQuery>): Seeded[] {
   if (query.assigneeId) rows = rows.filter((r) => r.assigneeId === query.assigneeId);
   if (query.q) {
     const needle = query.q.toLowerCase();
-    rows = rows.filter((r) => r.title.toLowerCase().includes(needle));
+    // Title or notes, like the server: a search that ignored the notes would
+    // agree with an endpoint that forgot them.
+    rows = rows.filter(
+      (r) =>
+        r.title.toLowerCase().includes(needle) || (r.notes ?? '').toLowerCase().includes(needle),
+    );
   }
   if (query.due === 'none') rows = rows.filter((r) => r.dueOn === null);
   if (query.due === 'overdue') rows = rows.filter((r) => r.dueOn !== null && r.dueOn < today);
@@ -144,9 +152,12 @@ describe('the list of items', () => {
       { due: 'none' },
       { q: 'renew' },
       { q: 'Task number 1' },
+      // Only in the notes: no title mentions a kettle.
+      { q: 'KETTLE' },
       { status: 'open', due: 'overdue' },
       { status: 'done', q: 'task' },
     ];
+    assert.ok(oracle({ q: 'kettle' }).length > 0, 'the fixture should have notes to find');
     for (const query of queries) {
       const expected = oracle(query).map((row) => row.id);
       for (const limit of [3, 10, 200]) {
@@ -213,17 +224,21 @@ describe('what "due" means', () => {
     actAs(owner);
   });
 
-  it('draws the day boundary where the app lives, not at midnight UTC', async () => {
-    // Kiritimati is fourteen hours ahead of UTC and Niue eleven behind, so at
-    // every instant of the year it is a different date in the two of them.
-    // One item, due today in Niue: in Kiritimati that day has already gone.
-    // Whatever hour this test runs at, the two answers must differ — which
-    // they only do if the boundary is worked out per time zone.
-    await reset();
-    const ahead = 'Pacific/Kiritimati';
-    const behind = 'Pacific/Niue';
-    assert.ok(calendarDay(new Date(), ahead) > calendarDay(new Date(), behind));
+  // Kiritimati is fourteen hours ahead of UTC and Niue eleven behind, so at
+  // every instant of the year it is a different date in the two of them. One
+  // item, due today in Niue: in Kiritimati that day has already gone. Whatever
+  // hour these run at, the answers differ — which they only do if the
+  // boundary is worked out in a time zone rather than at midnight UTC.
+  const ahead = 'Pacific/Kiritimati';
+  const behind = 'Pacific/Niue';
+  const appZone = config.timeZone;
+  afterEach(() => {
+    config.timeZone = appZone;
+  });
 
+  async function dueTodayInNiue(): Promise<void> {
+    await reset();
+    assert.ok(calendarDay(new Date(), ahead) > calendarDay(new Date(), behind));
     const created = new Date();
     await db.insert(items).values({
       id: randomUUID(),
@@ -233,19 +248,37 @@ describe('what "due" means', () => {
       createdAt: created,
       updatedAt: created,
     });
+  }
 
+  const count = async (due: string) =>
+    (await json<Page>(await call('GET', `/api/items?due=${due}`))).total;
+
+  it('draws the day boundary where the app lives, not at midnight UTC', async () => {
+    await dueTodayInNiue();
+    actAs(await makeUser('owner'));
+
+    config.timeZone = behind;
+    assert.equal(await count('overdue'), 0);
+    assert.equal(await count('week'), 1);
+
+    config.timeZone = ahead;
+    assert.equal(await count('overdue'), 1);
+    assert.equal(await count('week'), 0);
+  });
+
+  it('gives everybody the same answer, whatever zone their own account is set to', async () => {
+    await dueTodayInNiue();
+    config.timeZone = behind;
     const inNiue = await makeUser('owner', { email: 'niue@example.com' });
     const inKiritimati = await makeUser('owner', { email: 'kiritimati@example.com' });
     await db.update(user).set({ timeZone: behind }).where(eq(user.id, inNiue.id));
     await db.update(user).set({ timeZone: ahead }).where(eq(user.id, inKiritimati.id));
 
-    actAs(inNiue);
-    assert.equal((await json<Page>(await call('GET', '/api/items?due=overdue'))).total, 0);
-    assert.equal((await json<Page>(await call('GET', '/api/items?due=week'))).total, 1);
-
-    actAs(inKiritimati);
-    assert.equal((await json<Page>(await call('GET', '/api/items?due=overdue'))).total, 1);
-    assert.equal((await json<Page>(await call('GET', '/api/items?due=week'))).total, 0);
+    for (const person of [inNiue, inKiritimati]) {
+      actAs(person);
+      assert.equal(await count('overdue'), 0, person.email);
+      assert.equal(await count('week'), 1, person.email);
+    }
   });
 });
 

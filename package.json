@@ -17,7 +17,7 @@
     "start": "node --env-file-if-exists=.env dist/server/src/main.js",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p frontend/tsconfig.json --noEmit",
     "test": "node --test --test-concurrency=2 'server/**/*.test.ts' 'scripts/**/*.test.mjs'",
-    "test:postgres": "TEST_POSTGRES=1 node --test 'server/**/*.test.ts'",
+    "test:postgres": "node server/src/test/require-postgres.mjs && TEST_POSTGRES=1 node --test 'server/**/*.test.ts'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "node scripts/check-repo.mjs && node --run format:check && node --run typecheck && node --run test && node --run build:frontend && node scripts/check-frontend.mjs",

@@ -16,7 +16,7 @@ import {
   StatusBadge,
 } from '@/components/inhouse';
 import { ItemForm } from '@/components/items/item-form';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { canEdit, isOwner, useMe } from '@/lib/auth';
 import { formatBytes, formatDate, formatDateTime, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -31,16 +31,24 @@ function ItemPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const me = useMe();
-  const [editing, setEditing] = useState(false);
+  // Editing remembers the version it started from. The record behind it can
+  // refresh while the form is open — another tab, a pull to refresh — and the
+  // version the person was looking at when they began is the one that counts.
+  const [editingFrom, setEditingFrom] = useState<string | null>(null);
+  const editing = editingFrom !== null;
   const fileInput = useRef<HTMLInputElement>(null);
 
+  const mayEdit = canEdit(me.data?.role);
   const item = useQuery({
     queryKey: ['items', id],
     queryFn: ({ signal }) => api.get(`/api/items/${id}`, Item, undefined, signal),
   });
+  // The history is for the people who change records; the server refuses it
+  // to a viewer, so a viewer's page does not ask.
   const history = useQuery({
     queryKey: ['audit', 'items', id],
     queryFn: () => api.get('/api/audit', AuditPage, { entity: 'items', entityId: id, limit: 50 }),
+    enabled: mayEdit,
   });
   const files = useQuery({
     queryKey: ['attachments', 'items', id],
@@ -57,7 +65,6 @@ function ItemPage() {
   if (item.isError) throw item.error;
 
   const record = item.data;
-  const mayEdit = canEdit(me.data?.role);
   const mayDelete = isOwner(me.data?.role);
 
   const refreshRecord = async () => {
@@ -91,7 +98,7 @@ function ItemPage() {
           <>
             <RefreshButton />
             {mayEdit && !editing && (
-              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              <Button size="sm" variant="outline" onClick={() => setEditingFrom(record.updatedAt)}>
                 {t('action.edit')}
               </Button>
             )}
@@ -124,12 +131,18 @@ function ItemPage() {
             <ItemForm
               item={record}
               submitLabel={t('action.save')}
-              onCancel={() => setEditing(false)}
+              onCancel={() => setEditingFrom(null)}
               onSubmit={async (input) => {
-                await api.patch(`/api/items/${id}`, Item, input);
+                // The copy this form was opened on. If somebody has saved
+                // since, the server answers `conflict` rather than letting this
+                // save quietly undo theirs.
+                await api.patch(`/api/items/${id}`, Item, {
+                  ...input,
+                  updatedAt: editingFrom ?? record.updatedAt,
+                });
                 await refreshRecord();
                 toast.success(t('items.saved'));
-                setEditing(false);
+                setEditingFrom(null);
               }}
             />
           ) : (
@@ -216,24 +229,28 @@ function ItemPage() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-xs">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">{t('items.history')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {history.isPending ? (
-            <Skeleton className="h-16 w-full" />
-          ) : history.data?.rows.length ? (
-            <HistoryList
-              events={history.data.rows}
-              fieldLabel={fieldName}
-              valueLabel={fieldValue}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">{t('items.historyEmpty')}</p>
-          )}
-        </CardContent>
-      </Card>
+      {mayEdit && (
+        <Card className="shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">{t('items.history')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {history.isPending ? (
+              <Skeleton className="h-16 w-full" />
+            ) : history.isError ? (
+              <p className="text-sm text-muted-foreground">{errorMessage(history.error)}</p>
+            ) : history.data.rows.length ? (
+              <HistoryList
+                events={history.data.rows}
+                fieldLabel={fieldName}
+                valueLabel={fieldValue}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('items.historyEmpty')}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

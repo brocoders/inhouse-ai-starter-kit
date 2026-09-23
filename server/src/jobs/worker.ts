@@ -92,13 +92,31 @@ async function run(
   }
 }
 
+/**
+ * The housekeeping before a claim, one step at a time. Each step is on its own
+ * because each can fail on its own — one schedule row that cannot be read, a
+ * lease update that hits a lock — and a failure in either used to throw out of
+ * the whole tick, every tick, so nothing already queued was ever claimed. The
+ * step is written down and the tick carries on to the work.
+ */
+async function housekeeping(step: string, work: () => Promise<unknown>): Promise<void> {
+  try {
+    await work();
+  } catch (error) {
+    log.error(
+      { err: error, step },
+      `the job worker could not ${step} and carried on: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 /** One turn of the loop. Returns whether there was anything to do. */
 export async function tick(options: WorkerOptions = {}): Promise<boolean> {
   const settings = { ...DEFAULTS, ...options };
   const database = options.database ?? db;
   lastTick = new Date();
-  await releaseExpired(database);
-  await dueSchedules(new Date(), database);
+  await housekeeping('release expired leases', () => releaseExpired(database));
+  await housekeeping('queue due schedules', () => dueSchedules(new Date(), database));
   const job = await claim(randomUUID(), settings.leaseMs, database);
   if (!job) return false;
   await run(job, settings, database);

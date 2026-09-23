@@ -9,6 +9,7 @@
 //                    proxy. Unauthenticated and never cached, or it would
 //                    report the version that was there a minute ago.
 import { Hono } from 'hono';
+import type { ApiError } from '../../../shared/schemas.ts';
 import type { AppEnv } from '../auth.ts';
 import { config } from '../config.ts';
 import { db } from '../db/index.ts';
@@ -31,4 +32,16 @@ export const healthRoutes = new Hono<AppEnv>()
       release: config.release,
       schemaVersion: await schemaVersion(db).catch(() => 0),
     });
+  })
+  // Anything else under /health is a probe with a typo in it. Left to fall
+  // through, it would reach the screens and come back 200 with a page of
+  // HTML — so a mistyped health check would pass for ever and prove nothing.
+  .all('*', (c) => {
+    c.header('Cache-Control', 'no-store');
+    const body: ApiError = {
+      kind: 'not_found',
+      message: 'There is no health check at that address.',
+      requestId: c.get('requestId'),
+    };
+    return c.json(body, 404);
   });

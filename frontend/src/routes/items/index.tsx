@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { ChevronRight, ListChecks, Plus, SearchX } from 'lucide-react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { ChevronRight, Download, ListChecks, Plus, SearchX } from 'lucide-react';
+import { toast } from 'sonner';
 import { z } from 'zod';
-import { ItemPage, ItemStatus, page as pageOf, User, type Item } from '@shared/schemas';
+import { ItemPage, ItemStatus, type Item } from '@shared/schemas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,12 +17,14 @@ import {
   RefreshButton,
   StatusBadge,
 } from '@/components/inhouse';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { downloadCsv, type CsvColumn } from '@/lib/csv';
 import { canEdit, useMe } from '@/lib/auth';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { formatDate, formatNumber, today } from '@/lib/format';
+import { formatDate, formatDateTime, formatNumber, today } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { isOverdue, statusLabel, statusTone } from '@/lib/items';
+import { useUsers } from '@/lib/users';
 import { cn } from '@/lib/utils';
 
 // The filters live in the address, not in a component's memory: a filtered
@@ -36,8 +39,21 @@ const Search = z.object({
 });
 export type ItemsSearch = z.infer<typeof Search>;
 
-const UserPage = pageOf(User);
 const PAGE_SIZE = 25;
+// The most one request may ask for. A download is one request: a list longer
+// than this has outgrown a spreadsheet export and wants a report of its own.
+const CSV_LIMIT = 200;
+
+// Dates as `YYYY-MM-DD`, which every spreadsheet sorts as a date; the rest as
+// a person would read them on the screen.
+const csvColumns: CsvColumn<Item>[] = [
+  { header: t('items.title.label'), value: (item) => item.title },
+  { header: t('items.status'), value: (item) => statusLabel(item.status) },
+  { header: t('items.dueOn'), value: (item) => item.dueOn },
+  { header: t('items.assignee'), value: (item) => item.assigneeName },
+  { header: t('items.notes'), value: (item) => item.notes },
+  { header: t('items.csvCreated'), value: (item) => formatDateTime(item.createdAt) },
+];
 
 export const Route = createFileRoute('/items/')({
   component: Items,
@@ -59,6 +75,7 @@ function Items() {
   // third of a second: typing must never feel like it is waiting for a round
   // trip, and the history must not gain an entry per letter.
   const [typed, setTyped] = useState(search.q ?? '');
+  const [exporting, setExporting] = useState(false);
   useEffect(() => setTyped(search.q ?? ''), [search.q]);
   useEffect(() => {
     const value = typed.trim();
@@ -72,10 +89,9 @@ function Items() {
     return () => clearTimeout(timer);
   }, [typed, search.q, navigate]);
 
-  const people = useQuery({
-    queryKey: ['users'],
-    queryFn: () => api.get('/api/users', UserPage),
-  });
+  // A viewer may not read the list of people, so the filter offers only
+  // "Anyone" to them rather than asking and being refused.
+  const people = useUsers({ enabled: mayEdit });
 
   const list = useInfiniteQuery({
     queryKey: ['items', search],
@@ -97,12 +113,46 @@ function Items() {
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
 
+  // A list that could not be read is not an empty list, and "No items yet"
+  // would say it was. The route's error screen shows the server's sentence and
+  // the reference to quote. A later page failing is left to the list itself:
+  // the rows already shown are still true.
+  if (list.isError && !list.data) throw list.error;
+
   const rows = list.data?.pages.flatMap((p) => p.rows) ?? [];
   const total = list.data?.pages[0]?.total ?? 0;
   const filtered = Boolean(search.q || search.status || search.due || search.assigneeId);
 
   const set = (patch: Partial<ItemsSearch>) =>
     void navigate({ search: (previous) => ({ ...previous, ...patch }) });
+
+  // The rows this filter matches, in the list's own order, as one fresh
+  // request rather than whatever pages happen to have been scrolled into view.
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const page = await api.get('/api/items', ItemPage, {
+        limit: CSV_LIMIT,
+        q: search.q,
+        status: search.status,
+        due: search.due,
+        assigneeId: search.assigneeId,
+      });
+      downloadCsv(`items-${todayDay}.csv`, page.rows, csvColumns);
+      if (page.total > page.rows.length) {
+        toast.warning(
+          t('items.csvCapped', {
+            shown: formatNumber(page.rows.length),
+            total: formatNumber(page.total),
+          }),
+        );
+      }
+    } catch (cause) {
+      toast.error(errorMessage(cause));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -112,6 +162,15 @@ function Items() {
         actions={
           <>
             <RefreshButton />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={exporting || total === 0}
+              onClick={() => void exportCsv()}
+            >
+              <Download aria-hidden />
+              {exporting ? t('items.csvPreparing') : t('items.csv')}
+            </Button>
             {mayEdit && (
               <Link to="/items/new">
                 <Button size="sm">

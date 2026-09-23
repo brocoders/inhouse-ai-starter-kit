@@ -39,6 +39,30 @@ export function diff(before: Row, after: Row): Changes {
   return changes;
 }
 
+/**
+ * Fields whose values the history keeps out of its own copy. The history is
+ * read far more widely than the record it describes and is never cleaned up,
+ * so an e-mail address written into it would outlive the person's account and
+ * travel with every backup. The line still says the address changed; it just
+ * does not say what to.
+ */
+const REDACTED: Record<string, readonly string[]> = { user: ['email'] };
+
+export function redact(entity: string, changes: Changes): Changes {
+  const fields = REDACTED[entity];
+  if (!fields) return changes;
+  const out: Changes = { ...changes };
+  for (const field of fields) {
+    const change = out[field];
+    if (!change) continue;
+    out[field] = {
+      from: change.from === null ? null : `[${field}]`,
+      to: change.to === null ? null : `[${field}]`,
+    };
+  }
+  return out;
+}
+
 export async function recordChange(
   db: Db,
   input: {
@@ -57,6 +81,6 @@ export async function recordChange(
     entity: input.entity,
     entityId: input.entityId,
     action: input.action,
-    changes: diff(input.before, input.after),
+    changes: redact(input.entity, diff(input.before, input.after)),
   });
 }

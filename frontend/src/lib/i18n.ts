@@ -1,7 +1,7 @@
 // One sentence, one place. Screens call t('items.title'); they never hold the
 // words. A second language is then a second file beside en.ts and a line here,
 // not a sweep through every component.
-import { en, type Strings } from './en';
+import { en, type Strings } from './en.ts';
 
 export type TextKey = keyof Strings;
 

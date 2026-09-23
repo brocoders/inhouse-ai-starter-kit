@@ -6,7 +6,9 @@
 // carried on `Me`. FormatProvider takes them from there and seeds this module,
 // so a plain function can format without every caller passing settings down.
 import { createContext, createElement, useContext, type ReactNode } from 'react';
-import { setTextLocale } from './i18n';
+// The explicit extension lets `node --test` load this file as it is, for
+// format.test.ts; Vite does not mind either way.
+import { setTextLocale } from './i18n.ts';
 
 export type FormatSettings = { locale: string; timeZone: string };
 
@@ -55,6 +57,7 @@ function dateFormat(key: string, options: Intl.DateTimeFormatOptions) {
   if (!made) {
     made = new Intl.DateTimeFormat(current.locale, {
       timeZone: current.timeZone,
+      // A calendar-day format passes its own `timeZone: 'UTC'`, which wins.
       ...options,
     });
     caches.set(key, made);
@@ -70,15 +73,31 @@ function numberFormat(key: string, options: Intl.NumberFormatOptions) {
   return made;
 }
 
-/** An instant or a calendar day as "18 Sept 2026". */
+const CALENDAR_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * An instant or a calendar day as "18 Sept 2026".
+ *
+ * The two are different things and are formatted differently. An instant is
+ * shown on the day it falls on in the app's time zone. A calendar day — a due
+ * day, `2026-09-18` — has no time and no zone: it is the 18th everywhere, so
+ * it is formatted as midnight UTC in UTC and never passes through the app's
+ * zone at all. Going through the zone, even from midday, puts it on the 19th
+ * anywhere more than twelve hours ahead of UTC.
+ */
 export function formatDate(value: string | Date | null | undefined): string {
+  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+  const day = typeof value === 'string' ? CALENDAR_DAY.exec(value) : null;
+  if (day) {
+    const at = new Date(Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3])));
+    // Date.UTC rolls 30 February over into March; a day that does not exist
+    // is not a day, and saying "2 Mar" for it would be inventing one.
+    if (Number.isNaN(at.getTime()) || at.toISOString().slice(0, 10) !== value) return '—';
+    return dateFormat('calendar-day', { ...options, timeZone: 'UTC' }).format(at);
+  }
   const date = toDate(value);
   if (!date) return '—';
-  return dateFormat('date', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
+  return dateFormat('date', options).format(date);
 }
 
 /** An instant as "18 Sept 2026, 14:05", in the app's time zone. */
@@ -196,17 +215,39 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
+ * The calendar day ("2026-09-22") an instant falls on in the app's time zone,
+ * not the browser's and not UTC's. `updatedAt.slice(0, 10)` is the UTC day,
+ * which is a different day for part of every day almost everywhere; comparing
+ * it with `today()` counts an evening's work in the wrong week.
+ */
+export function dayOf(value: string | Date): string {
+  // A calendar day is already its own day; only an instant needs a zone.
+  if (typeof value === 'string' && CALENDAR_DAY.test(value)) return value;
+  const date = toDate(value);
+  if (!date) return '';
+  // `en-CA` for the parts only, so the digits are always ASCII whatever the
+  // app's own locale writes them as.
+  let dayParts = caches.get('day-parts') as Intl.DateTimeFormat | undefined;
+  if (!dayParts) {
+    dayParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: current.timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    caches.set('day-parts', dayParts);
+  }
+  const parts = dayParts.formatToParts(date);
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+/**
  * Today as a calendar day ("2026-09-22") in the app's time zone, not the
  * browser's. Someone travelling must see the same "today" as the office.
  */
 export function today(at: Date = new Date()): string {
-  const parts = dateFormat('day', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(at);
-  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${part('year')}-${part('month')}-${part('day')}`;
+  return dayOf(at);
 }
 
 /** A calendar day `days` away from another, staying a calendar day throughout. */
@@ -219,8 +260,9 @@ export function shiftDay(day: string, days: number): string {
 function toDate(value: string | Date | null | undefined): Date | null {
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  // A calendar day has no time of day; midday keeps it on its own date in
-  // every time zone the app might be shown in.
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00Z`) : new Date(value);
+  // A calendar day has no time of day. Midday UTC is as neutral as an instant
+  // can be, but it is still an instant: formatDate and dayOf never send a
+  // calendar day through here, and nothing that needs its exact date should.
+  const date = CALENDAR_DAY.test(value) ? new Date(`${value}T12:00:00Z`) : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }

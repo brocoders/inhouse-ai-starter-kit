@@ -2,7 +2,7 @@
 // broker: for an app this size a row with a status and a run time is the whole
 // mechanism, and it is backed up and restored with everything else.
 import { randomUUID } from 'node:crypto';
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { db, type Db } from '../db/index.ts';
 import { jobs, type JobRow } from '../db/schema.ts';
 
@@ -113,9 +113,30 @@ export async function markFailed(
     .where(eq(jobs.id, job.id));
 }
 
-/** Jobs whose worker went away. Their lease ran out, so they are free again. */
+/**
+ * Jobs whose worker went away. Their lease ran out, so they are free again —
+ * unless that was their last try.
+ *
+ * The claim already counted the attempt, so a lease that runs out is that
+ * attempt failing, exactly as if the handler had thrown. Without the ceiling a
+ * job that hangs, or that takes the process down with it, would come back
+ * forever and be retried every few minutes for as long as the server runs.
+ */
 export async function releaseExpired(database: Db = db): Promise<number> {
-  const rows = await database
+  const now = new Date();
+  const expired = and(eq(jobs.status, 'running'), lt(jobs.lockedUntil, now));
+  const given = await database
+    .update(jobs)
+    .set({
+      status: 'failed',
+      lockedUntil: null,
+      lockedBy: null,
+      lastError: 'the worker stopped mid-run, and that was the last try',
+      finishedAt: now,
+    })
+    .where(and(expired, gte(jobs.attempts, jobs.maxAttempts)))
+    .returning({ id: jobs.id });
+  const requeued = await database
     .update(jobs)
     .set({
       status: 'queued',
@@ -123,7 +144,7 @@ export async function releaseExpired(database: Db = db): Promise<number> {
       lockedBy: null,
       lastError: 'the worker stopped mid-run',
     })
-    .where(and(eq(jobs.status, 'running'), lt(jobs.lockedUntil, new Date())))
+    .where(and(expired, lt(jobs.attempts, jobs.maxAttempts)))
     .returning({ id: jobs.id });
-  return rows.length;
+  return given.length + requeued.length;
 }

@@ -39,6 +39,28 @@ function toAttachment(row: typeof attachments.$inferSelect): Attachment {
   };
 }
 
+/**
+ * "Download this, and call it this." A header may only carry Latin-1, and
+ * building one with `отчёт.pdf` in it throws before a byte is sent, so the
+ * name goes twice: percent-encoded UTF-8 in `filename*`, which every current
+ * browser reads, and a plain ASCII stand-in in `filename` for anything that
+ * does not. Quotes, backslashes and control characters never reach either.
+ */
+export function contentDisposition(fileName: string): string {
+  const fallback =
+    fileName
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7e]/g, '_')
+      .replace(/["\\]/g, '')
+      .trim() || 'download';
+  const encoded = encodeURIComponent(fileName.replace(/[\u0000-\u001f\u007f]/g, '')).replace(
+    /['()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
 const idParam = z.object({ id: z.string().min(1) });
 const listQuery = z.object({
   entity: z.string().min(1).max(80),
@@ -126,7 +148,7 @@ export const attachmentsRoutes = new Hono<AppEnv>()
       'Content-Type': row.contentType,
       'Content-Length': String(row.size),
       // Downloaded, not run: an uploaded page never executes on our origin.
-      'Content-Disposition': `attachment; filename="${row.fileName.replace(/["\\]/g, '')}"`,
+      'Content-Disposition': contentDisposition(row.fileName),
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'private, no-store',
     });

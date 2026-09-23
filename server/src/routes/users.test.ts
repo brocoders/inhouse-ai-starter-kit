@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import { eq } from 'drizzle-orm';
-import type { ApiError, Me, User } from '../../../shared/schemas.ts';
+import type { ApiError, AuditEvent, Me, User } from '../../../shared/schemas.ts';
 import { db } from '../db/index.ts';
 import { user } from '../db/schema.ts';
 import { app } from '../app.ts';
@@ -15,6 +15,7 @@ import {
   makeUser,
   ready,
   reset,
+  sessionCookieFor,
   type TestUser,
 } from '../test/helpers.ts';
 
@@ -113,6 +114,92 @@ describe('what each role may do', () => {
     assert.equal((await json<Me>(await call('GET', '/api/me'))).role, 'viewer');
 
     assert.equal((await call('PATCH', '/api/me', { name: '   ' })).status, 400);
+  });
+});
+
+// The tests above are somebody through the development stand-in. These are
+// the same rules reached through a real session cookie from a magic link, so
+// a role check that only worked for the stand-in could not pass unnoticed.
+describe('what each role may do, signed in with a real cookie', () => {
+  const as = async (person: TestUser) => {
+    actAs(undefined);
+    const cookie = await sessionCookieFor(person);
+    return (method: string, path: string, body?: Record<string, unknown>) =>
+      call(method, path, body, { headers: { cookie } });
+  };
+
+  it('a viewer reads and cannot write or read the history', async () => {
+    const request = await as(viewer);
+    assert.equal((await request('GET', '/api/me')).status, 200);
+    assert.equal((await request('GET', '/api/items')).status, 200);
+    assert.equal((await request('POST', '/api/items', { title: 'Something' })).status, 403);
+    assert.equal((await request('GET', '/api/audit')).status, 403);
+    assert.equal((await request('GET', '/api/users')).status, 403);
+  });
+
+  it('a member writes and cannot delete or manage people', async () => {
+    const request = await as(member);
+    const created = await request('POST', '/api/items', { title: 'Something' });
+    assert.equal(created.status, 201);
+    const { id } = await json<{ id: string }>(created);
+    assert.equal((await request('DELETE', `/api/items/${id}`)).status, 403);
+    assert.equal(
+      (await request('PATCH', `/api/users/${viewer.id}`, { role: 'member' })).status,
+      403,
+    );
+    assert.equal((await request('GET', '/api/ops')).status, 403);
+  });
+
+  it('an owner deletes and manages people', async () => {
+    const request = await as(owner);
+    const { id } = await json<{ id: string }>(
+      await request('POST', '/api/items', { title: 'Something' }),
+    );
+    assert.equal((await request('DELETE', `/api/items/${id}`)).status, 204);
+    assert.equal((await request('GET', '/api/ops')).status, 200);
+    assert.equal(
+      (await request('PATCH', `/api/users/${viewer.id}`, { role: 'member' })).status,
+      200,
+    );
+  });
+
+  it('a turned-off account is refused even with a cookie that still works', async () => {
+    const request = await as(member);
+    await db.update(user).set({ active: false }).where(eq(user.id, member.id));
+    const response = await request('GET', '/api/items');
+    assert.equal(response.status, 403);
+    assert.match((await json<ApiError>(response)).message, /turned off/);
+  });
+});
+
+describe('the history of the people list', () => {
+  it('is closed to a viewer, whose role is to see records, not what lies behind them', async () => {
+    actAs(viewer);
+    for (const path of ['/api/audit', '/api/audit?entity=user', '/api/audit?entity=items']) {
+      const response = await call('GET', path);
+      assert.equal(response.status, 403, path);
+      assert.equal((await json<ApiError>(response)).kind, 'forbidden');
+    }
+    actAs(member);
+    assert.equal((await call('GET', '/api/audit?entity=items')).status, 200);
+  });
+
+  it('says an address was set without writing the address down', async () => {
+    actAs(owner);
+    await call('POST', '/api/users', {
+      email: 'private.person@example.com',
+      name: 'Private Person',
+      role: 'viewer',
+    });
+    const response = await call('GET', '/api/audit?entity=user');
+    assert.equal(response.status, 200);
+    const text = await response.clone().text();
+    assert.equal(text.includes('private.person@example.com'), false, 'the address is in the log');
+    const history = await json<{ rows: AuditEvent[] }>(response);
+    const created = history.rows.find((row) => row.action === 'created');
+    assert.deepEqual(created?.changes.email, { from: null, to: '[email]' });
+    // Everything else about the invitation is still there to be read.
+    assert.deepEqual(created?.changes.role, { from: null, to: 'viewer' });
   });
 });
 

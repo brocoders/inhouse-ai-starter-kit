@@ -87,7 +87,11 @@ export const app = new Hono<AppEnv>()
       },
       referrerPolicy: 'no-referrer',
       xFrameOptions: 'DENY',
-      strictTransportSecurity: config.isProduction ? 'max-age=31536000; includeSubDomains' : false,
+      // Caddy sets HSTS (see the Caddyfile): it is about the connection, which
+      // is Caddy's half of the job. Setting it here as well would be one header
+      // written in two places, and the day they disagree a browser keeps
+      // whichever it saw last.
+      strictTransportSecurity: false,
     }),
   )
   // Nothing on this server is ever bigger than a file upload.

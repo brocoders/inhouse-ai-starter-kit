@@ -11,12 +11,22 @@
 //
 //   TEST_POSTGRES=1 TEST_DATABASE_URL=postgres://... pnpm test:postgres
 //
-// Without those it skips, and says so, rather than passing quietly.
+// Without TEST_POSTGRES it skips, and says so, rather than passing quietly.
+// With TEST_POSTGRES but no TEST_DATABASE_URL it fails: somebody asked for the
+// real thing, and PGlite standing in for it would be a pass that proved
+// nothing.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 
-const live = process.env.TEST_POSTGRES === '1' && Boolean(process.env.TEST_DATABASE_URL);
+const asked = process.env.TEST_POSTGRES === '1';
+const live = asked && Boolean(process.env.TEST_DATABASE_URL);
+
+if (asked && !live) {
+  it('has a PostgreSQL to run against', () => {
+    assert.fail('TEST_POSTGRES=1 is set but TEST_DATABASE_URL is not, so this would run on PGlite');
+  });
+}
 
 describe(
   'against a real PostgreSQL',

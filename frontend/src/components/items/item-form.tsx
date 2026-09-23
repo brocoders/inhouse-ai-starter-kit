@@ -1,14 +1,12 @@
 import { useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { page as pageOf, User, type Item, type ItemInput } from '@shared/schemas';
+import { type Item, type ItemInput } from '@shared/schemas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Choice, FormField } from '@/components/inhouse';
-import { api, fieldErrors } from '@/lib/api';
+import { ApiError, fieldErrors } from '@/lib/api';
 import { t } from '@/lib/i18n';
-
-const UserPage = pageOf(User);
+import { useUsers } from '@/lib/users';
 
 /**
  * The form both the new-item screen and the record page use.
@@ -36,11 +34,12 @@ export function ItemForm({
   const [assigneeId, setAssigneeId] = useState(item?.assigneeId ?? '');
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Somebody else saved this record after this form was opened. That is about
+  // the whole record rather than one field, so it is said beside the button
+  // that was just pressed rather than under a field that did nothing wrong.
+  const [conflict, setConflict] = useState(false);
 
-  const people = useQuery({
-    queryKey: ['users'],
-    queryFn: () => api.get('/api/users', UserPage),
-  });
+  const people = useUsers();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -51,6 +50,7 @@ export function ItemForm({
     }
     setBusy(true);
     setErrors({});
+    setConflict(false);
     try {
       await onSubmit({
         title: title.trim(),
@@ -60,6 +60,10 @@ export function ItemForm({
         assigneeId: assigneeId || null,
       });
     } catch (cause) {
+      if (cause instanceof ApiError && cause.kind === 'conflict') {
+        setConflict(true);
+        return;
+      }
       // The server validates too, and its answer is the one that counts: it
       // knows the rules this form only mirrors.
       const fields = fieldErrors(cause);
@@ -135,6 +139,11 @@ export function ItemForm({
           </FormField>
         </div>
       </fieldset>
+      {conflict && (
+        <p role="alert" className="text-sm text-destructive">
+          {t('items.conflict')}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy}>
           {busy ? t('action.saving') : submitLabel}
