@@ -224,7 +224,10 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   over the first, rather than a conditional inside `compose.yaml`, so the
   file every server reads stays one file. Stopping on a taken port, rather
   than warning, because a Caddy that cannot bind fails later and less
-  clearly.
+  clearly. Interval jobs count from the moment the last run was queued, not
+  from the top of the hour, and are capped at a day: anything slower is a
+  daily job, and alignment to the clock is what piles every job on every
+  machine onto the same minute.
 
 ## Open
 

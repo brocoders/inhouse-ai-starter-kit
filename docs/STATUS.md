@@ -26,7 +26,8 @@ write hook let a session use `node --run`, its scratch folder and its memory.
 Version 0.3 is being built on branch `claude/gracious-brattain-ea8ed9`
 from the agreed spec `docs/specs/version-0.3.md`, one commit per step.
 Landed so far: (1) the shared-server path — `server-setup.sh --shared`
-and `deploy.edge: "host"`. Still to come: interval jobs, the "More" tab,
+and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules. Still to
+come: the "More" tab,
 the phone pass over the primitives, the notify outbox with owner alerts,
 restic off-site backups, the two-part first-paint budget, CI on a private
 repository, and a home for an app's departures from the kit.
@@ -106,3 +107,8 @@ step is one commit with its tests and its documentation.
    is never started. Proven by `scripts/server-setup.test.mjs`, which runs
    the whole script against a scratch folder with the machine's commands
    stubbed — the first time the script has run whole anywhere.
+2. **Jobs every so many minutes.** `schedule(name, { everyMinutes: 15 })`
+   beside `{ daily: '07:00' }`: lined up one interval ahead when first
+   seen, run once when due, the next counted from then, so an hour of
+   downtime gives one run, not four. Whole minutes from 1 to 1440. Six new
+   tests in `schedules.test.ts`.

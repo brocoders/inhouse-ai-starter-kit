@@ -26,9 +26,11 @@ The nouns of the system and one line each. Start with the ones that exist.
 
 ## What happens on a schedule
 
-Jobs and reminders, with their time in the app's time zone.
+Jobs and reminders, with their time in the app's time zone. A job runs
+either daily at a time or every so many minutes; nothing finer.
 
 - Daily 07:00 — assignees receive a list of their overdue items (example).
+- Every 15 minutes — (the other shape: a check, a mirror, a sender).
 
 ## Words we use
 
