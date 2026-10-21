@@ -5,9 +5,13 @@ name: Docs
 # change — the free Actions minutes on a private repository are the reason the
 # expensive work is split across workflows at all.
 #
-# Turn Pages on once, by hand: Settings → Pages → Build and deployment →
-# Source: GitHub Actions. Until that is done this workflow builds and then
-# fails at the deploy step.
+# The site is always built, so a broken guide is caught on every change. It
+# is published only when the repository variable PUBLISH_DOCS is "true"
+# (Settings → Secrets and variables → Actions → Variables), because Pages
+# from a private repository needs a paid plan and the deploy step would
+# otherwise be red on every push. To publish: turn Pages on once (Settings →
+# Pages → Build and deployment → Source: GitHub Actions), then set the
+# variable.
 on:
   push:
     branches: [main]
@@ -28,13 +32,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
-    name: Build and deploy
+  build:
+    name: Build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       # The whole tree, because docs/site/scripts/sync-reference.mjs copies the
       # owner-facing pages out of docs/ before the build. No history is needed.
@@ -49,5 +50,15 @@ jobs:
           path: docs/site
           package-manager: pnpm@11.19.0
           node-version: '24'
+  deploy:
+    name: Publish
+    if: vars.PUBLISH_DOCS == 'true'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -29,9 +29,9 @@ Landed so far: (1) the shared-server path — `server-setup.sh --shared`
 and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
 phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
 one home for the history vocabulary; (5) the notify outbox with owner
-alerts; (6) restic off-site backups; (7) the two-part first-paint budget.
-Still to come: CI on a private repository, and a home for an app's
-departures from the kit.
+alerts; (6) restic off-site backups; (7) the two-part first-paint budget;
+(8) CI on a private repository and a no-CI mode. Still to come: a home for
+an app's departures from the kit.
 
 ## Known problems
 
@@ -163,3 +163,12 @@ step is one commit with its tests and its documentation.
    screen, 60 KB for one screen's own weight, and names the heaviest screen
    every run. No translation split: the dictionary is a few kilobytes and
    is not where the weight is. Four new checker tests.
+8. **CI on a private repository, and a no-CI mode.** The migration check's
+   fetch of `main` carries the run's own token, so it works where the
+   checkout keeps no credentials; the guides are built on every docs change
+   and published only when the repository variable `PUBLISH_DOCS` is
+   `true`; the Tests job is skipped when `INHOUSE_CI` is `off`, the gate
+   being `pnpm check` on the laptop; both workflows hand an `NPM_TOKEN`
+   secret to `pnpm install` for an app with a private package; the sorts
+   that followed the machine's locale name one. `docs/running.md` has the
+   section. Not verified on GitHub until the branch is pushed.

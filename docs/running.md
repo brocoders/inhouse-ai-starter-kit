@@ -315,6 +315,45 @@ for "the new screen is broken", not for "the new migration was wrong".
 
 ---
 
+## The checks on GitHub, and running without them
+
+Every push runs two workflows. **CI** is the cheap half — secrets, line
+budgets, formatting, whitespace — and takes about a minute. **Tests** is
+everything `pnpm check` runs, against a real PostgreSQL, and is skipped when a
+change touches only documentation. A third, **Docs**, builds the guides on
+every change to `docs/` and publishes them only when you say so.
+
+A private repository gets 2,000 free minutes a month, and a project under daily
+development can spend them in a week. Three settings, all under _Settings →
+Secrets and variables → Actions_, decide what runs:
+
+| Setting                          | What it does                                                                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variable `INHOUSE_CI` = `off`    | **No-CI mode.** The Tests workflow is skipped. The gate is then `pnpm check` on your machine, which the release runs before every release.              |
+| Variable `PUBLISH_DOCS` = `true` | Publish the guides to GitHub Pages. Needs Pages turned on once (_Settings → Pages → Source: GitHub Actions_) and, on a private repository, a paid plan. |
+| Secret `NPM_TOKEN`               | Only if your app uses a private npm package (see below).                                                                                                |
+
+The middle option, when the free minutes are not enough and no CI is too
+little, is a runner on your own server: `deploy/runner-setup.sh` installs one,
+held to one core and a gigabyte so a test run cannot slow the app for real
+people. `docs/server-requirements.md` has the details. It is for private
+repositories only.
+
+_A private npm package_ (one of your own, from GitHub Packages or a paid
+registry): add two lines to a `.npmrc` at the root of the repository —
+
+```
+@your-org:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+```
+
+— put the token in your own shell (`export NPM_TOKEN=…` in your profile, never
+in the repository) and as the `NPM_TOKEN` secret on GitHub, where both
+workflows already hand it to `pnpm install`. The production image builds on the
+server and would need the token as a Docker build secret; that is a change to
+`Dockerfile` and `deploy/release.mjs` for the app that needs it, not something
+the kit carries for everyone.
+
 ## Rebuilding from nothing
 
 The server is gone — deleted, or the provider lost it. You have this repository

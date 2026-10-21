@@ -176,11 +176,14 @@ export function checkSourceFile(rel, text) {
   return errors;
 }
 
+// With a locale named. Bare localeCompare sorts by whatever locale the
+// machine happens to have, so the order of findings differed between a
+// laptop and CI on the first real project; one locale, the same everywhere.
+export const byName = (a, b) => a.name.localeCompare(b.name, 'en');
+
 function sourceFiles(dir, out = []) {
   if (!existsSync(dir)) return out;
-  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  )) {
+  for (const entry of readdirSync(dir, { withFileTypes: true }).sort(byName)) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) sourceFiles(full, out);
     else if (/\.tsx?$/.test(entry.name) && !entry.name.endsWith('.d.ts')) out.push(full);

@@ -11,6 +11,7 @@ import {
   bundleRules,
   BEFORE_ANY_SCREEN_BUDGET_GZIP,
   SCREEN_OWN_BUDGET_GZIP,
+  byName,
 } from './check-frontend.mjs';
 
 const SCREEN = 'frontend/src/routes/things.tsx';
@@ -258,4 +259,18 @@ test('a row, link or button under 44 px is refused where a finger lands', () => 
   // The desktop sidebar is hidden on the phone and keeps its 36 px rows.
   clean('frontend/src/components/shell/app-sidebar.tsx', '<Link className="flex h-9" />');
   clean(UI, '<button className="h-8" />');
+});
+
+test('files are visited in one order whatever locale the machine has', () => {
+  const names = ['Zebra.tsx', 'ärger.tsx', 'apple.tsx', 'Äpfel.tsx'].map((name) => ({ name }));
+  // English order: the umlauts sort with their base letters, not after z as
+  // Swedish would have them.
+  assert.deepEqual(
+    [...names].sort(byName).map((n) => n.name),
+    ['Äpfel.tsx', 'apple.tsx', 'ärger.tsx', 'Zebra.tsx'],
+  );
+  assert.deepEqual(
+    [...names].sort(byName).map((n) => n.name),
+    [...names].sort((a, b) => a.name.localeCompare(b.name, 'en')).map((n) => n.name),
+  );
 });

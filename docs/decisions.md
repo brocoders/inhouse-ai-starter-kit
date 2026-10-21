@@ -152,7 +152,13 @@ Fixed so the agent never debates it. Versions verified in the research pass
   GitHub-hosted runners within the free minutes; a self-hosted runner on the
   production server with a CPU limit (the default recommendation); a second
   small server as runner, backup target and debug copy. (_PF_ burned the free
-  minutes in four days.)
+  minutes in four days.) Since 0.3 the workflows work on a private
+  repository as shipped (the migration check fetches `main` with the run's
+  own token; the guides are built always and published only when the
+  repository variable `PUBLISH_DOCS` is `true`), and the no-CI mode is a
+  repository variable, `INHOUSE_CI` = `off`, that skips the test job: the
+  gate is then `pnpm check` on the laptop. A variable rather than a deleted
+  workflow, so turning CI back on is a setting and not a revert.
 - **No staging** by default.
 - **Dependencies:** Dependabot weekly, grouped, applied by the agent in one
   PR.
@@ -258,7 +264,9 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   right for a few kilobytes. 280 KB before any screen is the kit's floor
   plus room for two ordinary libraries; 60 KB for one screen's own weight
   is four times the heaviest today, and the checker names the heaviest
-  screen on every run so the day one grows the number says which.
+  screen on every run so the day one grows the number says which. Sorts in
+  the checkers and the log name a locale or compare bytes, because a bare
+  `localeCompare` follows the machine and CI and a laptop disagreed.
 
 ## Open
 
