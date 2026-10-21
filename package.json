@@ -1,11 +1,11 @@
 {
   "name": "inhouse-ai-starter-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.19.0",
   "engines": {
-    "node": ">=24.15.0 <25"
+    "node": ">=24.15.0 <25 || >=26.0.0 <27"
   },
   "scripts": {
     "dev": "node --run dev:server & node --run dev:frontend & wait",
@@ -18,8 +18,8 @@
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p frontend/tsconfig.json --noEmit",
     "test": "node --test --test-concurrency=2 'server/**/*.test.ts' 'frontend/src/**/*.test.ts' 'scripts/**/*.test.mjs'",
     "test:postgres": "node server/src/test/require-postgres.mjs && TEST_POSTGRES=1 node --test 'server/**/*.test.ts'",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write . '!data'",
+    "format:check": "prettier --check . '!data'",
     "check": "node scripts/check-repo.mjs && node --run format:check && node --run typecheck && node --run test && node --run build:frontend && node scripts/check-frontend.mjs",
     "db:generate": "drizzle-kit generate --config server/drizzle.config.ts",
     "db:migrate": "node --env-file-if-exists=.env server/src/db/migrate-cli.ts",
@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@electric-sql/pglite": "^0.5.8",
     "@hono/node-server": "^2.1.1",
     "@hono/zod-validator": "^0.9.1",
     "@tanstack/react-query": "^5.103.2",
@@ -54,7 +55,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-plugin": "^1.168.40",
     "@types/node": "^24.13.4",

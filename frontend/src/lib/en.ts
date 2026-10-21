@@ -5,7 +5,10 @@
 // A value is either a sentence, or one sentence per plural form. `{name}` in a
 // sentence is filled in by t(); see i18n.ts.
 export const en = {
-  'app.name': 'InHouse',
+  // The one word that is not written here: the app's name comes from
+  // inhouse.config.json by way of vite.config.ts. Node's test runner, which
+  // imports this file too, has no `import.meta.env` at all — hence the `?.`.
+  'app.name': import.meta.env?.VITE_APP_NAME ?? 'InHouse',
   'app.tagline': 'A private system for a team that knows each other.',
 
   'nav.home': 'Home',

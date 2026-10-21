@@ -12,6 +12,27 @@
 // Where deleting a whole tree is the normal thing to do: all three are rebuilt
 // by a command, and none of them is ever the only copy of anything.
 const DISPOSABLE = /^(?:\.\/)?(?:\.shots|dist|node_modules)(?:\/|$)/;
+// The scratch folders a session writes its own temporary files to — the
+// system temp folder, macOS's per-user one, and `$TMPDIR`, which the sandbox
+// points at the one place outside the project a command may write. Clearing
+// one's own scratch is everyday work; refusing it only taught agents to work
+// around the guard. What follows the folder name must be plain path segments
+// — letters, digits, dots, dashes — with no `..`, no glob, no brace and no
+// variable, so the folder itself, anything above it, and anything a shell
+// could expand into stay out of reach. `$TMPDIR` counts only when it is set
+// to an absolute path: unset, `$TMPDIR/home` is `/home`.
+const PLAIN = /^(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+const SCRATCH_ROOTS = /^(?:(?:\/private)?\/tmp|\/var\/folders\/[^/]+\/[^/]+\/T)\//;
+function scratch(target, env) {
+  const variable = /^\$\{?TMPDIR\}?\//.exec(target);
+  if (variable) {
+    const tmp = env.TMPDIR;
+    if (typeof tmp !== 'string' || !tmp.startsWith('/')) return false;
+    return PLAIN.test(target.slice(variable[0].length));
+  }
+  const root = SCRATCH_ROOTS.exec(target);
+  return root !== null && PLAIN.test(target.slice(root[0].length));
+}
 
 const LOCAL_HOST = /^(?:localhost|127\.0\.0\.1|::1|\[::1\]|0\.0\.0\.0|\/)/i;
 const DB_PROGRAMS = new Set(['psql', 'pg_dump', 'pg_dumpall', 'pg_restore', 'dropdb']);
@@ -49,11 +70,13 @@ const MESSAGES = {
   remove: (targets) =>
     `\`rm -rf ${targets.join(' ')}\` deletes a tree that nothing rebuilds.\n` +
     'Inside this project only .shots/, dist/ and node_modules/ are disposable — each of those is\n' +
-    'recreated by a command. For anything else: move it aside, or ask the owner.',
+    'recreated by a command — and your own files under $TMPDIR. For anything else: move it\n' +
+    'aside, or ask the owner.',
   removeUnseen:
     'That deletes a tree whose name is only known when the command runs — a `$(…)`, a variable,\n' +
     'a pipe into `xargs` or a script — so nobody can check what goes. Name the directory literally;\n' +
-    'only .shots/, dist/ and node_modules/ may be deleted without asking the owner.',
+    'only .shots/, dist/, node_modules/ and your own files under $TMPDIR may be deleted without\n' +
+    'asking the owner.',
   database: (program, host) =>
     (host === ENVIRONMENT
       ? `That points \`${program}\` at a host taken from an environment variable, which this\n` +
@@ -232,8 +255,10 @@ function checkRemove(args) {
   const forced = flags.some((f) => /^-[^-]*f/.test(f) || f === '--force');
   if (!recursive && !forced) return null;
   const targets = args.filter((w) => !w.startsWith('-'));
-  if (!targets.length || targets.some((t) => /[$`]/.test(t))) return MESSAGES.removeUnseen;
-  const risky = targets.filter((t) => !DISPOSABLE.test(t));
+  if (!targets.length || targets.some((t) => /[$`]/.test(t) && !scratch(t, env))) {
+    return MESSAGES.removeUnseen;
+  }
+  const risky = targets.filter((t) => !DISPOSABLE.test(t) && !scratch(t, env));
   return risky.length ? MESSAGES.remove(risky) : null;
 }
 
@@ -401,8 +426,14 @@ function judgeWords(words, depth, lineHosts) {
   return null;
 }
 
+// The environment the command will run in, as far as the guard needs it:
+// whether `$TMPDIR` names a real scratch folder. Set once per top-level
+// judgement; the recursive calls for `sh -c` and friends share it.
+let env = process.env;
+
 /** The message to block `command` with, or null when it may run. */
-export function judge(command, depth = 0) {
+export function judge(command, depth = 0, environment = process.env) {
+  if (depth === 0) env = environment;
   if (typeof command !== 'string' || !command.trim() || depth > MAX_DEPTH) return null;
 
   // A pipe into a shell is one command by design, so it is matched whole.

@@ -31,13 +31,16 @@ COPY . .
 RUN pnpm install --frozen-lockfile --prod=false --offline
 
 # --- build ------------------------------------------------------------------
-# `pnpm build` compiles the server to dist/server and the SPA to dist/frontend.
-# The two `test -f` lines are the gate: a build script that silently produces
+# `pnpm build` compiles the server to dist/server, the SPA to dist/frontend and
+# the seed script to dist/scripts, so a fresh server can make its first owner
+# from inside the container (see docs/running.md, "Make yourself the owner").
+# The three `test -f` lines are the gate: a build script that silently produces
 # nothing would otherwise be discovered by the health check after the switch,
 # which is minutes later and one restart too late.
 FROM deps AS build
 RUN pnpm build \
  && test -f dist/server/src/main.js \
+ && test -f dist/scripts/seed.js \
  && test -f dist/frontend/index.html
 
 # --- prod-deps --------------------------------------------------------------

@@ -196,16 +196,15 @@ export const itemsRoutes = new Hono<AppEnv>()
       const before = await readItem(db, id);
       if (!before) throw notFound('That item');
 
-      // Two people had the record open. Whoever saved second is told rather
-      // than quietly winning.
-      if (input.updatedAt && Date.parse(input.updatedAt) < before.updatedAt.getTime()) {
-        throw new AppError(
-          'conflict',
-          'Somebody else changed this item while you had it open. Reload it and make your change again.',
-        );
-      }
-
-      await db
+      // Two people had the record open. The save carries the `updatedAt` the
+      // screen read, and the write lands only if the row still has it, so two
+      // saves in the same instant cannot both win: the second changes nothing
+      // and is told. Comparing first and writing afterwards looks the same and
+      // is not — that is the gap the two saves fall through. The screen's
+      // copy has milliseconds; PostgreSQL keeps microseconds for a row the
+      // database stamped itself (`now()` in a migration or an import), so the
+      // stored value is cut to milliseconds before the comparison.
+      const written = await db
         .update(items)
         .set({
           ...(input.title !== undefined ? { title: input.title } : {}),
@@ -216,7 +215,22 @@ export const itemsRoutes = new Hono<AppEnv>()
           updatedAt: new Date(),
           updatedBy: actor.id,
         })
-        .where(eq(items.id, id));
+        .where(
+          and(
+            eq(items.id, id),
+            isNull(items.deletedAt),
+            input.updatedAt
+              ? sql`date_trunc('milliseconds', ${items.updatedAt}) = ${input.updatedAt}::timestamptz`
+              : undefined,
+          ),
+        )
+        .returning({ id: items.id });
+      if (written.length === 0) {
+        throw new AppError(
+          'conflict',
+          'Somebody else changed this item while you had it open. Reload it and make your change again.',
+        );
+      }
 
       const after = await readItem(db, id);
       if (!after) throw notFound('That item');

@@ -185,6 +185,24 @@ and the rehearsal are skipped, and the database is created instead.
 _You should see_, at the end, `Released … to orders.example.com` and an
 invitation to go and look at it.
 
+### 6. Make yourself the owner
+
+The server's database is empty: nobody can sign in yet. The same seed command
+you ran on your machine runs inside the app's container, once, with your name
+and address and a flag that says you mean the live database:
+
+```sh
+ssh deploy@203.0.113.10 'cd /opt/orders && docker compose -f current/compose.yaml --project-directory . --env-file .env exec -T app node dist/scripts/seed.js --owner you@example.com "Your Name" --i-mean-production'
+```
+
+_You should see_ `Your Name <you@example.com> is now the owner.` and, unless
+you filled in the e-mail lines in step 4, a sign-in link. Open it within the
+hour. With the e-mail lines filled in, the link goes to your inbox instead.
+
+_If this went wrong:_ "NODE_ENV is production" without the link means the flag
+was left off; the command refuses on purpose. "was already on the list" means
+you have done this before; it is harmless, and a fresh link follows it.
+
 ---
 
 ## A release

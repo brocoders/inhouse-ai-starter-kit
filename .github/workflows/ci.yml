@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      # check-repo.mjs walks every Git-visible file, so the tree is needed but
-      # no history is.
+      # check-repo.mjs walks every Git-visible file, so the tree is needed; the
+      # whitespace check below needs this commit's parent and nothing older.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 1
+          fetch-depth: 2
       # The migration check compares server/drizzle/*.sql with main. A pull
       # request checkout has no main, so bring just its tip; on main itself the
       # comparison is trivially clean.
@@ -49,5 +49,13 @@ jobs:
           restore-keys: pnpm-store-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm format:check
+      # Only what this commit changed. `git show --check HEAD` on a checkout
+      # with no parent reads the whole tree as added and fails on any old file
+      # with a trailing space — the first real project's CI was red for days.
       - name: Check whitespace
-        run: git show --format= --check HEAD
+        run: |
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^ HEAD
+          else
+            echo "first commit: nothing to compare against"
+          fi

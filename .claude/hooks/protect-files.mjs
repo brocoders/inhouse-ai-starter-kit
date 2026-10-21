@@ -5,10 +5,40 @@
 // Every rule here is one of the "never" lines in AGENTS.md. Writing them down
 // twice would be a second home for the same rule, so this file enforces them
 // rather than restating them: the message points back at what to do instead.
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { runHook, projectDir, block, insideProject } from './lib.mjs';
 import { SECRETS } from '../../scripts/check-repo.mjs';
+
+// The two places outside the project a session legitimately writes: its own
+// memory, which is where the tool keeps a lesson for the next session (the
+// first real project could not keep one and committed notes instead), and the
+// scratch folders for temporary files. Nothing else outside is ours.
+//
+// Paths are compared after following symlinks as far as they exist, so a link
+// planted in the scratch folder cannot point a write at the home directory.
+function realParent(filePath) {
+  let dir = path.resolve(filePath);
+  const rest = [];
+  while (!existsSync(dir)) {
+    rest.unshift(path.basename(dir));
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return path.join(realpathSync(dir), ...rest);
+}
+function allowedOutside(root, filePath) {
+  const resolved = realParent(filePath);
+  // Claude Code names a project's folder after its path, one dash per separator.
+  const slug = root.replace(/[^A-Za-z0-9-]/g, '-');
+  const memory = realParent(path.join(homedir(), '.claude', 'projects', slug, 'memory')) + path.sep;
+  if (resolved.startsWith(memory)) return true;
+  return [tmpdir(), '/tmp', '/private/tmp']
+    .map((d) => realParent(d) + path.sep)
+    .some((dir) => resolved.startsWith(dir));
+}
 
 const RULES = [
   {
@@ -56,10 +86,12 @@ await runHook(async (input) => {
   const rel = insideProject(root, filePath);
 
   if (rel === null) {
+    if (allowedOutside(root, filePath)) return;
     block(
       `${filePath} is outside this project.\n` +
-        'Work inside the project directory. If a file genuinely belongs elsewhere (a machine-wide\n' +
-        'setting, a key), hand the owner the exact steps instead of writing it yourself.',
+        'Work inside the project directory, your memory folder, or $TMPDIR. If a file genuinely\n' +
+        'belongs elsewhere (a machine-wide setting, a key), hand the owner the exact steps\n' +
+        'instead of writing it yourself.',
     );
   }
 

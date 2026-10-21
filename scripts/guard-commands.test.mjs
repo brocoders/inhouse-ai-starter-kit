@@ -105,3 +105,34 @@ test('everyday commands run', () => {
   allowed('');
   allowed(undefined);
 });
+
+test("a session's own scratch files may go; the scratch folder itself may not", () => {
+  // The sandbox points $TMPDIR at the one folder outside the project a command
+  // may write to, and clearing one's own files there is everyday work.
+  const tmp = { TMPDIR: '/private/tmp/claude-501/scratch' };
+  const ok = (command) => assert.equal(judge(command, 0, tmp), null, command);
+  const no = (command) => assert.notEqual(judge(command, 0, tmp), null, command);
+  ok('rm -rf /tmp/claude/build');
+  ok('rm -rf /private/tmp/claude-501/scratch/out');
+  ok('rm -rf /var/folders/ab/c4x2/T/inhouse-test-x1');
+  ok('rm -rf "$TMPDIR/scratch"');
+  ok('rm -rf ${TMPDIR}/scratch/a $TMPDIR/scratch/b.tmp');
+  no('rm -rf /tmp');
+  no('rm -rf /tmp/');
+  no('rm -rf /tmp//');
+  no('rm -rf /tmp/./');
+  no('rm -rf /tmp/*');
+  no('rm -rf /tmp/{..,x}/etc');
+  no('rm -rf /tmp/../etc');
+  no('rm -rf /var/folders/ab');
+  no('rm -rf /var/folders/ab/c4x2/T');
+  no('rm -rf $TMPDIR');
+  no('rm -rf $TMPDIR/..');
+  no('rm -rf $TMPDIR/*');
+  no('rm -rf "$TMPDIR/$X"');
+  no('rm -rf ${TMPDIR/*/}/Users');
+  no('rm -rf /tmp/x docs');
+  // With no $TMPDIR at all, `$TMPDIR/home` is `/home`.
+  assert.notEqual(judge('rm -rf $TMPDIR/home', 0, {}), null);
+  assert.notEqual(judge('rm -rf $TMPDIR/home', 0, { TMPDIR: 'relative' }), null);
+});

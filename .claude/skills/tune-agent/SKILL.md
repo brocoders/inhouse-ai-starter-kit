@@ -31,6 +31,9 @@ disagree. Decide the home first, then make the change, then prove it.
    narrows. Never allow a bare `node *` or `bash *`.
 5. Run `node scripts/check-repo.mjs` (budgets) and `node --test 'scripts/**/*.test.mjs'`.
 6. Record the change in `docs/decisions.md` if it is a policy, or in the memory
-   note if it is a preference. Report what changed in plain words.
+   note if it is a preference. Report what changed in plain words. A note that
+   records a limitation ("X is blocked here") says when and how that was
+   verified, and is re-tried before it is relied on again: permission states
+   change, and two such notes on the parent project turned out to be wrong.
 
 Skip this skill for a one-off instruction the owner gives for today's task.

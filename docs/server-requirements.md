@@ -5,12 +5,14 @@ records npm packages; nothing records system-level requirements unless they are
 written here, and an undocumented one stays invisible until the day the server is
 rebuilt and a release fails on a machine that happens to lack it.
 
-**Nothing in this file has been observed on a running server yet.** The kit's
-first server does not exist. Every version below is what a fresh Ubuntu 24.04
-provides or what `deploy/server-setup.sh` installs; the "Observed" column is
-filled in the first time somebody runs it, and this file is corrected then. Say
-what you observed, not what you expected — the difference is the whole point of
-the column.
+**The kit itself has not been released to a server.** The first app built from
+it was (September–October 2026, about twenty-five releases with `deploy/`
+unchanged), on a server that already ran another application, so
+`server-setup.sh` was walked by hand there and never run whole. Every version
+below is what a fresh Ubuntu 24.04 provides or what `deploy/server-setup.sh`
+installs; the "Observed" column is filled in the first time somebody runs it,
+and this file is corrected then. Say what you observed, not what you expected —
+the difference is the whole point of the column.
 
 Anything added to the server after that goes in the same change that needs it.
 That is a rule in `.claude/rules/deploy.md`, not a suggestion.

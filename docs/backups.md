@@ -50,6 +50,12 @@ takes of the live data just before replacing it — see below. If the list is
 short, or the newest is not from last night, something is wrong — check
 `systemctl status orders-backup.timer` on the server.
 
+_Why the timer lives on the host and not inside the app's containers:_ a
+backup job that is itself a container dies with `docker compose down` and goes
+with the volumes on `down -v`, which is the moment a backup matters most; and
+systemd's timer is `Persistent`, so a night the server was off is made up the
+next time it boots rather than skipped.
+
 ---
 
 ## The provider snapshot

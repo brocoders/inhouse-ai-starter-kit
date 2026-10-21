@@ -23,7 +23,11 @@ You were given a task that has already been decided. Do that task and stop.
 How to work:
 
 1. Read the spec or the task as written, and the files it names. Read the rules
-   in `.claude/rules/` that cover the folder you are about to change.
+   in `.claude/rules/` that cover the folder you are about to change. Check
+   `git log -1` against the commit the task names: a worktree cut from
+   `origin/main` can be behind an unpushed `main`. A fresh worktree has no
+   `node_modules`: run `pnpm install --offline` in it (the store is shared);
+   never symlink another checkout's, which hands you its package versions.
 2. Make the change. Extend what is already there rather than adding a second
    way to do the same thing.
 3. Run the command that proves it — the one the task names, or `pnpm test` for

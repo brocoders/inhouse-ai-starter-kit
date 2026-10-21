@@ -8,7 +8,7 @@
 // This is deliberately not cron. Daily at a time is what these apps need; the
 // day something needs "every second Tuesday", write that case rather than a
 // cron parser nobody can read.
-import { eq } from 'drizzle-orm';
+import { eq, notInArray } from 'drizzle-orm';
 import { db, type Db } from '../db/index.ts';
 import { schedules } from '../db/schema.ts';
 import { log } from '../log.ts';
@@ -32,6 +32,26 @@ export function registeredSchedules(): { name: string; spec: Spec }[] {
 
 export const specText = (spec: Spec): string => `daily:${spec.daily}`;
 
+// Databases whose retired schedules have been cleared this process. Once is
+// enough: the set of schedules is fixed when the code loads.
+const tidied = new WeakSet<object>();
+
+/**
+ * Forget schedules whose job the code no longer declares.
+ *
+ * A row outlives the job that made it — the worked example's reminder is the
+ * first one every app deletes — and a row with no job is never run, so the
+ * health page warned "due and had not run" for ever on the first real app
+ * built from the kit. The row goes; the job's past runs stay in `jobs`.
+ */
+export async function retireUnknownSchedules(database: Db = db): Promise<void> {
+  const known = [...registered.keys()];
+  const stale = known.length
+    ? await database.delete(schedules).where(notInArray(schedules.name, known)).returning()
+    : await database.delete(schedules).returning();
+  for (const row of stale) log.info({ job: row.name }, 'schedule retired: no job declares it');
+}
+
 /**
  * Run every schedule whose moment has passed, and write down the next one.
  *
@@ -40,6 +60,12 @@ export const specText = (spec: Spec): string => `daily:${spec.daily}`;
  * back rather than two.
  */
 export async function dueSchedules(now: Date = new Date(), database: Db = db): Promise<string[]> {
+  if (!tidied.has(database)) {
+    // Marked only once it has worked: a database still coming up after the
+    // switch gets another go on the next tick rather than never.
+    await retireUnknownSchedules(database);
+    tidied.add(database);
+  }
   const fired: string[] = [];
   for (const [name, spec] of registered) {
     const [row] = await database.select().from(schedules).where(eq(schedules.name, name)).limit(1);
