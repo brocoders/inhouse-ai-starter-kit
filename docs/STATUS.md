@@ -11,28 +11,27 @@ against stubbed `ssh` and `docker` only.
 
 ## In progress
 
-Version 0.2 is on `main` and on GitHub, tagged `v0.2.0`, with CI, the
-test job against real PostgreSQL and the guides publish all green on the
-merge commit (21 October 2026). It fixes what
-stopped the first release and the first agent session of the three projects
-that used version 0.1 (`docs/reviews/2026-10-21-feedback-review.md`): the
-production image now carries PGlite and the seed script, a blank `.env`
-line means "not set", the theme script is a file the security policy
-allows, `pnpm db:copy` finds the release layout, a deleted job's schedule
-row is forgotten, the worked example's conflict check is written correctly,
-the app's name, zone and locale reach development from `inhouse.config.json`,
-the release skill describes the script as it is, and the sandbox, guard and
-write hook let a session use `node --run`, its scratch folder and its memory.
-Version 0.3 is being built on branch `claude/gracious-brattain-ea8ed9`
-from the agreed spec `docs/specs/version-0.3.md`, one commit per step.
-Landed so far: (1) the shared-server path — `server-setup.sh --shared`
-and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
-phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
-one home for the history vocabulary; (5) the notify outbox with owner
-alerts; (6) restic off-site backups; (7) the two-part first-paint budget;
-(8) CI on a private repository and a no-CI mode; (9) a home for an app's
-departures from the kit. The review's section 4 table says what shipped
-for each row. What is left is the merge, the push and CI green on GitHub.
+Version 0.3 is on `main` and on GitHub, tagged `v0.3.0`, with CI and the
+test job against real PostgreSQL green on the final commit (21 October
+2026); the guides built green on the merge commit and are published only
+once the repository variable `PUBLISH_DOCS` is set to `true`, which is the
+owner's one step left. It builds the nine mechanisms every app had built
+for itself (`docs/specs/version-0.3.md`, agreed by the owner; the review's
+section 4 table says what shipped for each row): a server that already
+hosts something, jobs every N minutes, the "More" tab, the phone pass over
+the primitives, the notify outbox with owner alerts, restic off-site
+backups, the first-screen budget in two parts, CI on a private repository
+with a no-CI mode, and a home for an app's departures from the kit. A
+review of the whole branch before the merge found two real defects in the
+off-site section, both fixed before anything was merged.
+
+Not done, by choice (the spec's out-of-scope list): multi-tenancy,
+Telegram, revisions with restore, a Next.js variant, credential-expiry
+ladders, container hardening, a per-area translation split, a second
+notification channel. Not verified on a server: everything under
+`deploy/` is still proven against stubbed commands only — the shared
+mode, the host-edge overlay and the restic step have run whole in tests,
+never on a machine.
 
 ## Known problems
 
@@ -45,9 +44,10 @@ for each row. What is left is the merge, the push and CI green on GitHub.
 - Pushing from an agent session works only with the sandbox off for that
   one command, because the token lives in `~/.config/inhouse/`, which the
   sandbox hides; the same token cannot close or comment on pull requests.
-- The three projects' later friction (CI on a private repo, the first-screen
-  budget, a tab bar of eight screens, every-N-minutes jobs) is reviewed but
-  not fixed; see version 0.3 in the review.
+- Nothing in 0.3 has run on a real server: the shared setup, the host-edge
+  overlay, the restic off-site copy and its restore are tested against
+  stubs and documented, and the first app to use them fills in the
+  "Observed" column of `docs/server-requirements.md`.
 
 # Recent entries
 
