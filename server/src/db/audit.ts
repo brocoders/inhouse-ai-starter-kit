@@ -7,7 +7,9 @@ import type { Db } from './index.ts';
 import { auditLog } from './schema.ts';
 import { TRACKING_COLUMNS } from './tracking.ts';
 
-export type AuditAction = 'created' | 'updated' | 'deleted' | 'restored';
+import type { AuditAction } from '../../../shared/audit.ts';
+
+export type { AuditAction };
 export type Changes = Record<string, { from: unknown; to: unknown }>;
 
 type Row = Record<string, unknown> | null | undefined;

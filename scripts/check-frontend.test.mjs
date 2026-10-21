@@ -177,3 +177,22 @@ test('a build with no entry script is reported', () => {
     JSON.stringify(errors),
   );
 });
+
+test('a row, link or button under 44 px is refused where a finger lands', () => {
+  complains(SCREEN, '<li className="flex h-9 items-center">{t(\'x\')}</li>', 'under 44 px');
+  complains(SCREEN, '<Link to="/" className="min-h-10 px-2">{t(\'x\')}</Link>', 'under 44 px');
+  complains(SCREEN, '<button className="size-8 rounded-md" />', 'under 44 px');
+  complains(
+    'frontend/src/components/inhouse/row.tsx',
+    '<li className="min-h-8 sm:min-h-10" />',
+    'under 44 px',
+  );
+  clean(SCREEN, '<li className="flex min-h-14 items-center sm:min-h-10" />');
+  clean(SCREEN, '<li className="min-h-11" />');
+  clean(SCREEN, '<a className="h-14 w-full" />');
+  // A div is not a target; a bar inside a row may be as thin as it likes.
+  clean(SCREEN, '<div className="h-8 flex-1" />');
+  // The desktop sidebar is hidden on the phone and keeps its 36 px rows.
+  clean('frontend/src/components/shell/app-sidebar.tsx', '<Link className="flex h-9" />');
+  clean(UI, '<button className="h-8" />');
+});

@@ -216,6 +216,25 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+/* DESIGN.md: on a phone, nothing a finger aims at is under 44 px. The
+   registry's buttons and fields are 28 to 36 px tall and are never edited, so
+   the rule lives here and applies only where the pointer is a finger. Rows
+   state their own height in their classes (min-h-11 and up). */
+@media (pointer: coarse) {
+  [data-slot='button'],
+  [data-slot='input'],
+  [data-slot='select-trigger'],
+  [data-slot='dropdown-menu-item'] {
+    min-height: 2.75rem;
+  }
+  [data-slot='button']:has(> svg:only-child) {
+    min-width: 2.75rem;
+  }
+  [data-slot='checkbox'] {
+    /* The box stays its size; the space around it catches the finger. */
+    margin: 0.75rem;
+  }
+}
 .recharts-wrapper:focus,
 .recharts-surface:focus {
   outline: none;

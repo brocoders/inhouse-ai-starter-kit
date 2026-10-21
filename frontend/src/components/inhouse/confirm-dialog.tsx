@@ -19,27 +19,50 @@ import { t } from '@/lib/i18n';
  * button repeats the verb, so nobody confirms a "Yes" without knowing what it
  * agreed to. Nothing reversible gets one of these: a confirmation on a safe
  * action teaches people to click through the dangerous one.
+ *
+ * Two ways to open it. Give it a `trigger` and it opens itself from that
+ * button. Give it `open` and `onOpenChange` instead when the pause comes from
+ * somewhere that is not a button — a choice in a menu, say — and the screen
+ * decides when to ask; `onCancel` is then where the screen puts things back.
  */
 export function ConfirmDialog({
   trigger,
+  open: controlled,
+  onOpenChange,
+  onCancel,
   title,
   body,
   confirmLabel,
   onConfirm,
   destructive = true,
 }: {
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Called when the dialog closes without confirming. */
+  onCancel?: () => void;
   title: string;
   body?: string;
   confirmLabel: string;
   onConfirm: () => void | Promise<unknown>;
   destructive?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(false);
   const [busy, setBusy] = useState(false);
+  const open = controlled ?? own;
+  const setOpen = (next: boolean) => {
+    if (controlled === undefined) setOwn(next);
+    onOpenChange?.(next);
+  };
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={trigger as never} />
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onCancel?.();
+        setOpen(next);
+      }}
+    >
+      {trigger && <DialogTrigger render={trigger as never} />}
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

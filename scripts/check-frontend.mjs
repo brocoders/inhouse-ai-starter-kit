@@ -54,6 +54,15 @@ const OVERLAY = /<(?:Dialog|Sheet)Content\b[^>]*>/gs;
 // are a condition, not a sentence).
 const JSX_TEXT = /(?<![=\-])>([^<>{}();=&|]*[A-Za-z][^<>{}();=&|]*[A-Za-z][^<>{}();=&|]*)</g;
 const TRANSLATED = [`${SRC}/routes/`, VOCABULARY];
+// Where a finger lands: a row, a link or a button in a screen, a primitive or
+// the shell. DESIGN.md asks for 44 px on the phone, which is `min-h-11`; a
+// smaller height is fine for the desktop behind `sm:` or `md:`, never bare.
+// The sidebar is the one exception — the whole column is hidden under `md`.
+const TOUCHED = [`${SRC}/routes/`, VOCABULARY, `${SRC}/components/shell/`];
+const DESKTOP_ONLY = [`${SRC}/components/shell/app-sidebar.tsx`];
+const TARGET_TAG = /<(?:li|a|Link|button|Button)\b[^>]*?className="([^"]*)"[^>]*>/gs;
+const BARE_HEIGHT = /(?:^|\s)(?:min-)?(?:h|size)-(\d+)(?=\s|$)/g;
+const MIN_TOUCH_UNITS = 11;
 
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
@@ -126,6 +135,21 @@ export function checkSourceFile(rel, text) {
         `${rel}:${lineOf(text, m.index)}: "${words.length > 40 ? words.slice(0, 40) + '…' : words}" ` +
           'is typed into the screen; put it in the dictionary and render it with t()',
       );
+    }
+  }
+  if (
+    rel.endsWith('.tsx') &&
+    TOUCHED.some((dir) => rel.startsWith(dir)) &&
+    !DESKTOP_ONLY.includes(rel)
+  ) {
+    for (const tag of text.matchAll(TARGET_TAG)) {
+      for (const height of tag[1].matchAll(BARE_HEIGHT)) {
+        if (Number(height[1]) >= MIN_TOUCH_UNITS) continue;
+        errors.push(
+          `${rel}:${lineOf(text, tag.index)}: "${height[0].trim()}" on a row, link or button is under 44 px; ` +
+            'on the phone it needs min-h-11 or more, with the desktop height behind sm: (DESIGN.md, Space and density)',
+        );
+      }
     }
   }
   // Base UI's Button renders type="button", so a form's Button submits nothing

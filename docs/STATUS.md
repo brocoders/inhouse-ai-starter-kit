@@ -27,8 +27,9 @@ Version 0.3 is being built on branch `claude/gracious-brattain-ea8ed9`
 from the agreed spec `docs/specs/version-0.3.md`, one commit per step.
 Landed so far: (1) the shared-server path — `server-setup.sh --shared`
 and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
-phone tab bar with "More". Still to come:
-the phone pass over the primitives, the notify outbox with owner alerts,
+phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
+one home for the history vocabulary. Still to come:
+the notify outbox with owner alerts,
 restic off-site backups, the two-part first-paint budget, CI on a private
 repository, and a home for an app's departures from the kit.
 
@@ -121,3 +122,15 @@ step is one commit with its tests and its documentation.
    grew from 164 to 183 KB, lazy it is 165. In passing, the dev proxy now
    follows `PORT`, so a second checkout on the same machine can run on
    another port.
+4. **Touch targets, confirmations, history that reads.** One rule in
+   `index.css` lifts every registry button and field to 44 px where the
+   pointer is a finger; `check-frontend.mjs` refuses a row, link or button
+   in a screen, a primitive or the shell with a bare height under 44 px
+   (tested). Changing somebody's role and turning somebody off now ask
+   first; `ConfirmDialog` can be opened by the screen as well as by a
+   button. The actions a record can undergo live once in
+   `shared/audit.ts`, read by the column, the contract, the server and the
+   history list; a value with no better name is written by
+   `lib/history-text.ts` (tested), never as `[object Object]` or an id.
+   Not done: the phone screenshots of people and an item — the session's
+   usage allowance ran out before they were taken.

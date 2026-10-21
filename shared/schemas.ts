@@ -6,6 +6,7 @@
 // back with `total` and `nextCursor`. Every row that people care about
 // carries the tracking fields.
 import { z } from 'zod';
+import { AUDIT_ACTIONS } from './audit.ts';
 
 export const Role = z.enum(['owner', 'member', 'viewer']);
 export type Role = z.infer<typeof Role>;
@@ -124,7 +125,7 @@ export const AuditEvent = z.object({
   actorName: z.string().nullable(),
   entity: z.string(), // table name, e.g. "items"
   entityId: z.string(),
-  action: z.enum(['created', 'updated', 'deleted', 'restored']),
+  action: z.enum(AUDIT_ACTIONS),
   changes: z.record(z.string(), z.object({ from: z.unknown(), to: z.unknown() })),
 });
 export type AuditEvent = z.infer<typeof AuditEvent>;

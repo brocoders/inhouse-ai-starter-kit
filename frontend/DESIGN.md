@@ -45,8 +45,12 @@ writes them; negatives take a true minus sign (−).
 
 Tailwind's scale only: `gap-2` within a control group, `gap-4` between related
 groups, `gap-6` between sections. Card padding `p-4`, `p-6` on desktop. Rows are
-40 px on desktop and at least 44 px on the phone. Pages are one column under
-1024 px.
+40 px on desktop and at least 44 px on the phone: a row states its phone height
+first (`min-h-11` or more) and its desktop height behind `sm:`, and
+`check-frontend.mjs` refuses a row, link or button in a screen or a primitive
+whose unprefixed height is under 44 px. Registry buttons and fields, which are
+never edited, reach 44 px on a phone through one rule in `index.css` for coarse
+pointers. Pages are one column under 1024 px.
 
 **Every page root is `space-y-5`.** One value, on every screen, so the step from
 the header to the first thing under it is the same wherever you are. What breaks
@@ -110,6 +114,16 @@ pads itself out of the home bar with `env(safe-area-inset-bottom)`, and page
 content leaves `pb-24` for it. Up to five screens are five tabs; from six, the
 first four in `components/shell/navigation.ts` are tabs and the fifth is
 **More**, a bottom sheet with the rest — reorder that list to choose which four.
+
+## Irreversible actions
+
+Anything that cannot be undone by the person who did it — deleting, changing
+somebody's role, turning somebody off, sending, publishing, approving — goes
+through `ConfirmDialog`, which asks in the words of the thing being done and
+repeats the verb on the button. Nothing reversible gets one: a confirmation on
+a safe action teaches people to click through the dangerous one. A choice in a
+menu that is irreversible uses the dialog's `open` / `onOpenChange` form and
+puts the old value back on cancel.
 
 ## Forms
 

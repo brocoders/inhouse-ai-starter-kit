@@ -16,6 +16,7 @@
 // was picked up at once on a machine set to anything but UTC. A time in this
 // app is an instant, and the column now says so.
 import { sql } from 'drizzle-orm';
+import { AUDIT_ACTIONS } from '../../../shared/audit.ts';
 import {
   boolean,
   date,
@@ -145,7 +146,7 @@ export const auditLog = pgTable(
     actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
     entity: text('entity').notNull(),
     entityId: text('entity_id').notNull(),
-    action: text('action', { enum: ['created', 'updated', 'deleted', 'restored'] }).notNull(),
+    action: text('action', { enum: AUDIT_ACTIONS }).notNull(),
     changes: jsonb('changes')
       .notNull()
       .default(sql`'{}'::jsonb`),

@@ -229,7 +229,11 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   daily job, and alignment to the clock is what piles every job on every
   machine onto the same minute. The tab bar keeps five tabs and folds the
   rest under More from the sixth screen — four plus More, not five plus
-  More, because More is a tab too and six do not fit a thumb.
+  More, because More is a tab too and six do not fit a thumb. Touch
+  targets are enforced by one stylesheet rule on coarse pointers rather
+  than by editing the registry's components, which the kit never edits;
+  role changes and deactivation ask first, activation does not, because
+  only the irreversible gets a confirmation.
 
 ## Open
 
