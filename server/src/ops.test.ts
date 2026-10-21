@@ -11,7 +11,7 @@ import { config } from './config.ts';
 import { db } from './db/index.ts';
 import { jobs, notifications, schedules } from './db/schema.ts';
 import { log } from './log.ts';
-import { opsStatus } from './ops.ts';
+import { OFFSITE_MARKER, opsStatus } from './ops.ts';
 import { actAs, call, closeDb, json, makeUser, ready, reset } from './test/helpers.ts';
 
 before(ready);
@@ -23,7 +23,9 @@ beforeEach(async () => {
   config.worker = false;
 });
 
-const codes = async (): Promise<string[]> => (await opsStatus()).problems.map((p) => p.code);
+// The code before the colon: a failing job's code names the job after it.
+const codes = async (): Promise<string[]> =>
+  (await opsStatus()).problems.map((p) => p.code.split(':')[0] ?? p.code);
 
 describe('when everything is fine', () => {
   it('reports no problems at all', async () => {

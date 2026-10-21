@@ -105,3 +105,58 @@ describe('a recurring job', () => {
     assert.notEqual(await row('test.daily'), undefined);
   });
 });
+
+describe('a job every so many minutes', () => {
+  it('is lined up one interval ahead the first time it is seen, not run at once', async () => {
+    schedule('test.every', { everyMinutes: 15 });
+    const fired = await dueSchedules(new Date('2026-06-01T09:00:00Z'));
+    assert.deepEqual(fired, []);
+    assert.equal((await queued()).length, 0);
+    const lined = await row('test.every');
+    assert.equal(lined?.spec, 'every:15m');
+    assert.equal(lined?.nextRunAt.toISOString(), '2026-06-01T09:15:00.000Z');
+  });
+
+  it('runs when its interval has passed, once, and lines up the next from then', async () => {
+    schedule('test.every', { everyMinutes: 15 });
+    await dueSchedules(new Date('2026-06-01T09:00:00Z'));
+    assert.deepEqual(await dueSchedules(new Date('2026-06-01T09:14:59Z')), []);
+    assert.deepEqual(await dueSchedules(new Date('2026-06-01T09:15:30Z')), ['test.every']);
+    assert.equal((await queued()).length, 1);
+    assert.deepEqual(await dueSchedules(new Date('2026-06-01T09:15:31Z')), []);
+    assert.equal((await queued()).length, 1);
+    assert.equal((await row('test.every'))?.nextRunAt.toISOString(), '2026-06-01T09:30:30.000Z');
+  });
+
+  it('runs once after an hour of downtime, not four times', async () => {
+    schedule('test.every', { everyMinutes: 15 });
+    await dueSchedules(new Date('2026-06-01T09:00:00Z'));
+    assert.deepEqual(await dueSchedules(new Date('2026-06-01T10:00:00Z')), ['test.every']);
+    assert.equal((await queued()).length, 1);
+    assert.equal((await row('test.every'))?.nextRunAt.toISOString(), '2026-06-01T10:15:00.000Z');
+  });
+
+  it('lines the job up again when its interval is changed in code', async () => {
+    schedule('test.every', { everyMinutes: 15 });
+    await dueSchedules(new Date('2026-06-01T09:00:00Z'));
+    schedule('test.every', { everyMinutes: 5 });
+    await dueSchedules(new Date('2026-06-01T09:01:00Z'));
+    const lined = await row('test.every');
+    assert.equal(lined?.spec, 'every:5m');
+    assert.equal(lined?.nextRunAt.toISOString(), '2026-06-01T09:06:00.000Z');
+  });
+
+  it('can switch between the two shapes', async () => {
+    schedule('test.shape', { daily: '07:00' });
+    await dueSchedules(new Date('2026-06-01T09:00:00Z'));
+    schedule('test.shape', { everyMinutes: 30 });
+    await dueSchedules(new Date('2026-06-01T09:01:00Z'));
+    assert.equal((await row('test.shape'))?.nextRunAt.toISOString(), '2026-06-01T09:31:00.000Z');
+  });
+
+  it('refuses an interval that is not a whole number of minutes in a day', () => {
+    assert.throws(() => schedule('test.bad', { everyMinutes: 0 }), /1 to 1440/);
+    assert.throws(() => schedule('test.bad', { everyMinutes: 2.5 }), /whole number/);
+    assert.throws(() => schedule('test.bad', { everyMinutes: 1441 }), /daily/);
+  });
+});

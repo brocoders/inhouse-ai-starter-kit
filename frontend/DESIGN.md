@@ -45,8 +45,12 @@ writes them; negatives take a true minus sign (−).
 
 Tailwind's scale only: `gap-2` within a control group, `gap-4` between related
 groups, `gap-6` between sections. Card padding `p-4`, `p-6` on desktop. Rows are
-40 px on desktop and at least 44 px on the phone. Pages are one column under
-1024 px.
+40 px on desktop and at least 44 px on the phone: a row states its phone height
+first (`min-h-11` or more) and its desktop height behind `sm:`, and
+`check-frontend.mjs` refuses a row, link or button in a screen or a primitive
+whose unprefixed height is under 44 px. Registry buttons and fields, which are
+never edited, reach 44 px on a phone through one rule in `index.css` for coarse
+pointers. Pages are one column under 1024 px.
 
 **Every page root is `space-y-5`.** One value, on every screen, so the step from
 the header to the first thing under it is the same wherever you are. What breaks
@@ -88,6 +92,19 @@ actions; on a phone or a tablet it is the pull-down gesture in
 `useRefreshSignal()` number, so a screen that fetches in an effect gets the
 same refresh. Do not give a screen a Refresh button of its own.
 
+## Weight
+
+Two budgets, measured from the built chunks by `check-frontend.mjs`, both in
+gzipped kilobytes. **Before any screen** — the shell the entry imports
+statically plus what two or more screens share, which every first visit
+downloads — is 280 KB. **One screen's own** — what a single screen loads that
+no other screen and not the shell does — is 60 KB. The checker prints both
+every run and names the heaviest screen, so the day a screen gets heavy the
+number says which. A screen that is over splits what it loads (`lazy()` for a
+piece used on a tap, as the More sheet does) or loads less of it; a piece
+loaded on demand is outside both budgets, and the chart library must never
+reach the shell. Translations are one file and are not where the weight is.
+
 ## Charts
 
 Recharts, imported only inside `src/components/charts/`, reached only through
@@ -103,11 +120,26 @@ an XY chart. Where an XY chart stays: no Y axis, at most five X ticks, height
 
 ## Phone
 
-Design at 390 px first. Tables become card rows under 640 px. Detail views are
+Design at 390 px first, unless `docs/product.md` lists the screen under "Where
+this app departs from the kit" — a data-heavy screen may be desktop first, and
+that list is where the choice is recorded so the next session sees it. Tables
+become card rows under 640 px. Detail views are
 their own page, or a bottom drawer on the phone — not a popup. No horizontal
 page scroll, ever; long text truncates with a `title` attribute. The tab bar
 pads itself out of the home bar with `env(safe-area-inset-bottom)`, and page
-content leaves `pb-24` for it.
+content leaves `pb-24` for it. Up to five screens are five tabs; from six, the
+first four in `components/shell/navigation.ts` are tabs and the fifth is
+**More**, a bottom sheet with the rest — reorder that list to choose which four.
+
+## Irreversible actions
+
+Anything that cannot be undone by the person who did it — deleting, changing
+somebody's role, turning somebody off, sending, publishing, approving — goes
+through `ConfirmDialog`, which asks in the words of the thing being done and
+repeats the verb on the button. Nothing reversible gets one: a confirmation on
+a safe action teaches people to click through the dangerous one. A choice in a
+menu that is irreversible uses the dialog's `open` / `onOpenChange` form and
+puts the old value back on cancel.
 
 ## Forms
 

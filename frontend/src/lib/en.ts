@@ -17,6 +17,7 @@ export const en = {
   'nav.health': 'Health',
   'nav.account': 'Account',
   'nav.primary': 'Primary',
+  'nav.more': 'More',
 
   'action.save': 'Save',
   'action.saving': 'Saving…',
@@ -135,6 +136,13 @@ export const en = {
   'people.deactivate': 'Deactivate',
   'people.activate': 'Activate',
   'people.inactive': 'Inactive',
+  'people.changeRoleTitle': 'Make {name} {role}?',
+  'people.changeRoleBody':
+    'What they can see and do changes the moment they next load a screen. An owner can invite people, change roles and see the health page.',
+  'people.changeRole': 'Change role',
+  'people.deactivateTitle': 'Deactivate {name}?',
+  'people.deactivateBody':
+    'They are signed out everywhere and cannot sign in again until somebody activates them. Nothing of theirs is deleted.',
   'people.sent': 'The invitation is on its way to {email}.',
   'people.emptyTitle': 'Only you so far',
   'people.emptyBody': 'Invite the people who need to see this.',
@@ -194,6 +202,9 @@ export const en = {
   'history.restored': '{actor} restored this',
   'history.someone': 'Someone',
   'history.empty': '(empty)',
+  'history.record': 'another record',
+  'history.yes': 'yes',
+  'history.no': 'no',
 
   'form.required': 'This cannot be empty',
   'form.invalidEmail': 'That is not an email address',

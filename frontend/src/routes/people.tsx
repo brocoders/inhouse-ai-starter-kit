@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Choice,
+  ConfirmDialog,
   EmptyState,
   FormField,
   PageHeader,
@@ -52,6 +53,9 @@ function People() {
     await api.patch(`/api/users/${id}`, User, patch);
     await queryClient.invalidateQueries({ queryKey: usersQueryKey });
   };
+  // A role picked from the menu waits here until it is confirmed. The menu
+  // keeps showing the role the server knows, so cancelling needs no undo.
+  const [pendingRole, setPendingRole] = useState<{ person: User; role: Role } | null>(null);
 
   return (
     <div className="space-y-5">
@@ -100,7 +104,9 @@ function People() {
                       aria-label={t('people.role')}
                       value={person.role}
                       disabled={person.id === me.data?.id}
-                      onChange={(value) => void change(person.id, { role: value as Role })}
+                      onChange={(value) => {
+                        if (value !== person.role) setPendingRole({ person, role: value as Role });
+                      }}
                       options={roleOptions}
                     />
                   ) : (
@@ -110,15 +116,28 @@ function People() {
                   )}
                   {owner && (
                     <span className="sm:w-24 sm:text-right">
-                      {person.id !== me.data?.id && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => void change(person.id, { active: !person.active })}
-                        >
-                          {person.active ? t('people.deactivate') : t('people.activate')}
-                        </Button>
-                      )}
+                      {person.id !== me.data?.id &&
+                        (person.active ? (
+                          <ConfirmDialog
+                            trigger={
+                              <Button size="sm" variant="ghost">
+                                {t('people.deactivate')}
+                              </Button>
+                            }
+                            title={t('people.deactivateTitle', { name: person.name })}
+                            body={t('people.deactivateBody')}
+                            confirmLabel={t('people.deactivate')}
+                            onConfirm={() => change(person.id, { active: false })}
+                          />
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void change(person.id, { active: true })}
+                          >
+                            {t('people.activate')}
+                          </Button>
+                        ))}
                     </span>
                   )}
                 </li>
@@ -126,6 +145,22 @@ function People() {
             </ul>
           </CardContent>
         </Card>
+      )}
+      {pendingRole && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setPendingRole(null);
+          }}
+          title={t('people.changeRoleTitle', {
+            name: pendingRole.person.name,
+            role: t(`role.${pendingRole.role}`),
+          })}
+          body={t('people.changeRoleBody')}
+          confirmLabel={t('people.changeRole')}
+          destructive={false}
+          onConfirm={() => change(pendingRole.person.id, { role: pendingRole.role })}
+        />
       )}
     </div>
   );

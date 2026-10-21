@@ -35,7 +35,8 @@ export function recentErrors(): RecentError[] {
       grouped.set(entry.message, { ...entry, count: 1 });
     }
   }
-  return [...grouped.values()].sort((a, b) => b.at.localeCompare(a.at));
+  // ISO timestamps: plain string order is time order, in any locale.
+  return [...grouped.values()].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 }
 
 export function clearRecentErrors(): void {

@@ -152,7 +152,13 @@ Fixed so the agent never debates it. Versions verified in the research pass
   GitHub-hosted runners within the free minutes; a self-hosted runner on the
   production server with a CPU limit (the default recommendation); a second
   small server as runner, backup target and debug copy. (_PF_ burned the free
-  minutes in four days.)
+  minutes in four days.) Since 0.3 the workflows work on a private
+  repository as shipped (the migration check fetches `main` with the run's
+  own token; the guides are built always and published only when the
+  repository variable `PUBLISH_DOCS` is `true`), and the no-CI mode is a
+  repository variable, `INHOUSE_CI` = `off`, that skips the test job: the
+  gate is then `pnpm check` on the laptop. A variable rather than a deleted
+  workflow, so turning CI back on is a setting and not a revert.
 - **No staging** by default.
 - **Dependencies:** Dependabot weekly, grouped, applied by the agent in one
   PR.
@@ -213,6 +219,62 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   and memory folder; Node 24 or 26 are both accepted. Mechanisms every app
   needed and built itself (shared server, off-site backups, an outbox for
   problems, interval jobs, a "More" tab) are version 0.3, not this one.
+
+- **Version 0.3 (October 2026) builds what every app needed** — the
+  mechanisms section 4 of the same review found two projects had each built
+  for themselves. The spec is `docs/specs/version-0.3.md`. Choices made
+  there: a shared machine gets `server-setup.sh --shared`, which reads the
+  machine and writes only the app's files, and `deploy.edge: "host"`, under
+  which the kit's Caddy is never started and the app is published on
+  `127.0.0.1` for the machine's own web server — a second compose file laid
+  over the first, rather than a conditional inside `compose.yaml`, so the
+  file every server reads stays one file. Stopping on a taken port, rather
+  than warning, because a Caddy that cannot bind fails later and less
+  clearly. Interval jobs count from the moment the last run was queued, not
+  from the top of the hour, and are capped at a day: anything slower is a
+  daily job, and alignment to the clock is what piles every job on every
+  machine onto the same minute. The tab bar keeps five tabs and folds the
+  rest under More from the sixth screen — four plus More, not five plus
+  More, because More is a tab too and six do not fit a thumb. Touch
+  targets are enforced by one stylesheet rule on coarse pointers rather
+  than by editing the registry's components, which the kit never edits;
+  role changes and deactivation ask first, activation does not, because
+  only the irreversible gets a confirmation. The outbox sends first and
+  retries only on failure, rather than queuing everything for the worker:
+  a sign-in link must not wait for a tick, and a process with the worker
+  off must still send. A keyed message blocks its key while sent or
+  waiting, not after it gave up, so a problem nobody was told about is
+  told again. The health watch tells owners on the second sighting, a
+  quarter of an hour apart, because the page's own thresholds already
+  filter noise and one more interval costs nothing a person would notice.
+  Off-site backups use restic to any S3-compatible bucket, not `age` plus
+  an upload tool: one binary from Ubuntu's own repository encrypts,
+  uploads, keeps copies and restores, and the provider stays the owner's
+  choice. The server's `.env` goes with the dump, because a rebuilt server
+  with data and no secrets is half a restore. Retention is automated from
+  the start, with the proving restore a documented step rather than a
+  gate, because a copy nobody prunes is the one that fills the bucket. An
+  off-site failure does not fail the backup or the release that called it:
+  the dump on disk is real, and the stale marker reaches the owner. The
+  first-screen budget became two numbers instead of a lazy translation
+  split: measured from the built chunks, a first visit downloads 239 KB
+  before any screen (the shell plus what every screen shares), and the
+  heaviest screen adds 15 KB of its own, so the words were never the
+  weight and a split would have added a mechanism every screen must get
+  right for a few kilobytes. 280 KB before any screen is the kit's floor
+  plus room for two ordinary libraries; 60 KB for one screen's own weight
+  is four times the heaviest today, and the checker names the heaviest
+  screen on every run so the day one grows the number says which. Sorts in
+  the checkers and the log name a locale or compare bytes, because a bare
+  `localeCompare` follows the machine and CI and a laptop disagreed. An
+  app's departures from the kit's rules are a list in `docs/product.md`,
+  not flags in the rules themselves: one page every session already reads,
+  one line per exception, and the rules stay general. A review of the
+  whole branch before the merge found the off-site section reading the
+  owner's key file as shell (a password with a `$` broke the run and
+  printed part of itself) and restic keeping every copy for ever under its
+  default grouping; both were fixed before anything was merged, which is
+  what the solo profile's "review" step is for.
 
 ## Open
 

@@ -177,11 +177,11 @@ on it.
 
 Two ways, in order of effort:
 
-**Off-site object storage.** A nightly encrypted copy of the dump to S3, Backblaze
-B2 or similar — a few cents a month at this data size. This is the one to reach
-for: it survives losing the provider account, not just the machine. Ask the agent
-for the "off-site backups" recipe; it is about twenty lines added to the backup
-script plus a bucket and an access key.
+**Off-site object storage.** A nightly encrypted copy of the dump, and of the
+server's settings file, to a bucket at another provider — a few cents a month at
+this data size. This is the one to reach for: it survives losing the provider
+account, not just the machine. It is built in; setting it up is the section
+below, and takes a quarter of an hour.
 
 **A second small server.** Slightly more work, and it pays for itself three ways:
 somewhere to copy backups to, somewhere to run CI without slowing the app down,
@@ -193,13 +193,87 @@ on the worst possible day.
 
 ---
 
+## Setting up the off-site copy
+
+The nightly backup already knows how to send its dump away. It uses **restic**,
+one small program that encrypts, uploads, keeps a sensible number of copies and
+restores, with any bucket that speaks the S3 protocol — Hetzner Object Storage,
+Backblaze B2 or Amazon S3 all do. It does nothing until a file of four lines
+exists on the server; then every nightly and pre-release dump goes up too,
+with 14 daily, 8 weekly and 6 monthly copies kept.
+
+**A bucket** is a folder at a storage provider, reached over the internet with a
+key instead of a login.
+
+1. **Make a bucket** at a provider other than the one hosting your server, so
+   that one lost account does not take both. Private, in your region. Write down
+   the bucket's address (`https://…`), its name, and the access key and secret
+   key the provider shows you once.
+2. **Choose a restic password** — a long one from your password manager. It
+   encrypts every copy. **Nobody can read the backups without it, and nobody
+   can recover it for you**; keep it where you keep the key to your office.
+3. **Write the file on the server, yourself.** Not the agent: a key that has
+   been shown in a chat is a key you rotate. It is four lines, readable by the
+   `deploy` user only:
+
+   ```sh
+   ssh deploy@<your server> 'umask 077; nano /opt/orders/.backup.env'
+   ```
+
+   ```sh
+   RESTIC_REPOSITORY=s3:https://<the bucket's address>/<the bucket's name>
+   RESTIC_PASSWORD=<the restic password>
+   AWS_ACCESS_KEY_ID=<the access key>
+   AWS_SECRET_ACCESS_KEY=<the secret key>
+   ```
+
+   (The two `AWS_` names are what every S3-compatible provider expects, whoever
+   they are.)
+
+4. **Run the backup once by hand** and look at its last line:
+
+   ```sh
+   ssh deploy@<your server> '/usr/local/bin/orders-backup'
+   ```
+
+   _You should see_ `"off_server":true` at the end. The first run also creates
+   the repository in the bucket. `"off_server":false` with a line above it
+   saying `backup_offsite_failed` means the address, the keys or the bucket's
+   permissions are wrong; nothing is lost, the dump on disk was still made.
+
+5. **Prove the restore, once.** On the server, as `deploy`:
+
+   ```sh
+   set -a; . /opt/orders/.backup.env; set +a
+   restic snapshots
+   restic restore latest --target /tmp/offsite-check
+   ```
+
+   _You should see_ one snapshot per backup so far, and after the restore a
+   copy of the newest dump and of `.env` under `/tmp/offsite-check`. Restore
+   the dump into a scratch database exactly as in "Prove a restore works",
+   then `rm -r /tmp/offsite-check`.
+
+From then on the health page warns when the newest off-site copy is more than
+two days old, and that warning reaches you by e-mail like every other problem
+that stays. The server itself does not need restic for anything else;
+`server-setup.sh` installs it, and on a shared machine it tells you if it is
+missing.
+
+What it costs: storage is priced per gigabyte-month, and a young app's dumps
+are megabytes. Expect cents, not euros, for the first year.
+
 ## What is not backed up
 
 - **`/opt/<app>/.env`** — the database password, the session secret, the e-mail
-  key. It is in the provider snapshot but not in the nightly dump. If you rebuild
-  from a dump alone, `server-setup.sh` writes a fresh one and you fill in the two
-  e-mail lines again. The one thing worth keeping a copy of elsewhere is the
-  Resend API key, and that is replaceable in a minute from their dashboard.
+  key. It is in the provider snapshot and in the off-site copy once that is set
+  up, but not in the nightly dump. If you rebuild from a dump alone,
+  `server-setup.sh` writes a fresh one and you fill in the two e-mail lines
+  again. The one thing worth keeping a copy of elsewhere is the Resend API key,
+  and that is replaceable in a minute from their dashboard.
+- **`/opt/<app>/.backup.env`** — the four lines that reach the bucket. In the
+  provider snapshot only, and in your password manager, which is where they
+  came from.
 - **Uploaded files** (the `appdata` volume) — in the provider snapshot, not in
   the dump. If attachments matter to you, that is a second reason the snapshot is
   not optional.

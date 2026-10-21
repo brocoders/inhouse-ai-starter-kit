@@ -33,25 +33,54 @@ If the machine runs anything else, never restart or reconfigure it. This project
 owns its three containers, `/opt/<app>`, `/var/backups/<app>` and its own systemd
 timer, and nothing else.
 
+### A machine that already hosts something
+
+Two of the first three projects put their app on a server that was already
+running another one. `deploy/server-setup.sh --shared` is the path for that:
+the folder must be given (there is no default on a shared machine, and
+`deploy.dir` must agree), the machine itself is checked and reported, never
+changed — SSH, the firewall, updates, fail2ban and Docker are read, and a
+missing Docker stops the script instead of being installed — and only this
+app's folder, backup folder, settings file, backup wrapper and timer are
+written. The app's name is the slug on every container and volume, and the
+script refuses a name whose database volume already exists under some other
+folder, which is the one mistake that would put two apps on one database.
+
+When that machine already has a web server on ports 80 and 443, add
+`--edge host` and set `deploy.edge` to `"host"` in `inhouse.config.json`.
+The kit's Caddy is then never started: the release lays
+`compose.host-edge.yaml` over `compose.yaml`, which publishes the app on
+`127.0.0.1:<APP_BIND_PORT>` (3000 unless `--port` said otherwise) and nothing
+wider, and the machine's web server proxies the domain to that port. The
+setup script prints the block to add. A web server that itself runs in Docker
+cannot reach `127.0.0.1`; for it, `APP_BIND_HOST=172.17.0.1` in the server's
+`.env` publishes the app on the Docker bridge instead, which containers and
+the machine reach and the internet does not. With `--edge own` (the default)
+on a shared machine, the script stops when something already holds port 80 or
+443, because its Caddy could not start. In shared mode the script never
+changes an existing user: a `deploy` that exists but is not in the `docker`
+group stops it with the one command for the machine's owner to run.
+
 ## System packages
 
 Installed by `deploy/server-setup.sh` unless the note says otherwise.
 
-| Requirement                                   | Expected  | Observed | Used for                                                                                           | Without it                                                                          |
-| --------------------------------------------- | --------- | -------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Ubuntu                                        | 24.04 LTS | —        | everything below; supported until 2029                                                             | nothing here has been tried on anything else. The setup script warns and carries on |
-| `docker-ce`, `docker-ce-cli`, `containerd.io` | 27.x      | —        | running the app, the database and the web server                                                   | nothing runs                                                                        |
-| `docker-compose-plugin`                       | 2.x       | —        | `docker compose`, which every script here invokes                                                  | no release, no backup, no restore                                                   |
-| `docker-buildx-plugin`                        | 0.x       | —        | building the image from the Dockerfile                                                             | releases cannot build; everything already built keeps running                       |
-| `openssl`                                     | 3.0.x     | —        | generating the database password and session secret, once                                          | the settings file cannot be written on first setup                                  |
-| `ufw`                                         | 0.36.x    | —        | closing every port except SSH and the web                                                          | the machine answers on every port it happens to be listening on                     |
-| `unattended-upgrades`                         | 2.9.x     | —        | applying security updates nightly, rebooting at 04:00 when a kernel needs it                       | the machine falls behind on security patches silently                               |
-| `openssh-server`                              | 9.6       | —        | every remote step; it is how releases happen at all                                                | the server is unreachable                                                           |
-| `postgresql-client-16` (`psql`, `pg_dump`)    | 16.x      | —        | **only** for looking at the database from the host shell; the real ones run inside the container   | nothing breaks. Backups and restores use the client inside the db container         |
-| `curl`, `ca-certificates`, `gnupg`            | stock     | —        | adding Docker's apt repository, and checking things by hand                                        | the setup script cannot install Docker                                              |
-| `fail2ban`                                    | 1.0.x     | —        | banning addresses that hammer SSH. **Optional** — `SKIP_FAIL2BAN=1` skips it                       | nothing breaks. With password logins already off, this is a belt beside braces      |
-| `util-linux` (`flock`)                        | 2.39      | —        | the release lock: one release at a time. Part of every Ubuntu install; not installed by the script | a release refuses to start and says it could not take the lock                      |
-| `git`                                         | 2.43      | —        | nothing, on the server. Releases arrive as a tar archive, not a clone                              | nothing. Listed because people expect it to be needed                               |
+| Requirement                                   | Expected  | Observed | Used for                                                                                           | Without it                                                                           |
+| --------------------------------------------- | --------- | -------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Ubuntu                                        | 24.04 LTS | —        | everything below; supported until 2029                                                             | nothing here has been tried on anything else. The setup script warns and carries on  |
+| `docker-ce`, `docker-ce-cli`, `containerd.io` | 27.x      | —        | running the app, the database and the web server                                                   | nothing runs                                                                         |
+| `docker-compose-plugin`                       | 2.x       | —        | `docker compose`, which every script here invokes                                                  | no release, no backup, no restore                                                    |
+| `docker-buildx-plugin`                        | 0.x       | —        | building the image from the Dockerfile                                                             | releases cannot build; everything already built keeps running                        |
+| `openssl`                                     | 3.0.x     | —        | generating the database password and session secret, once                                          | the settings file cannot be written on first setup                                   |
+| `ufw`                                         | 0.36.x    | —        | closing every port except SSH and the web                                                          | the machine answers on every port it happens to be listening on                      |
+| `unattended-upgrades`                         | 2.9.x     | —        | applying security updates nightly, rebooting at 04:00 when a kernel needs it                       | the machine falls behind on security patches silently                                |
+| `openssh-server`                              | 9.6       | —        | every remote step; it is how releases happen at all                                                | the server is unreachable                                                            |
+| `postgresql-client-16` (`psql`, `pg_dump`)    | 16.x      | —        | **only** for looking at the database from the host shell; the real ones run inside the container   | nothing breaks. Backups and restores use the client inside the db container          |
+| `restic`                                      | 0.16.x    | —        | the off-site copy of the backups, once `/opt/<app>/.backup.env` exists (`docs/backups.md`)         | the nightly dump is still made; the backup script says the off-site copy was skipped |
+| `curl`, `ca-certificates`, `gnupg`            | stock     | —        | adding Docker's apt repository, and checking things by hand                                        | the setup script cannot install Docker                                               |
+| `fail2ban`                                    | 1.0.x     | —        | banning addresses that hammer SSH. **Optional** — `SKIP_FAIL2BAN=1` skips it                       | nothing breaks. With password logins already off, this is a belt beside braces       |
+| `util-linux` (`flock`)                        | 2.39      | —        | the release lock: one release at a time. Part of every Ubuntu install; not installed by the script | a release refuses to start and says it could not take the lock                       |
+| `git`                                         | 2.43      | —        | nothing, on the server. Releases arrive as a tar archive, not a clone                              | nothing. Listed because people expect it to be needed                                |
 
 Ubuntu 24.04 ships Node 26 in its own repositories and this project does not use
 it: Node runs **inside** the container, at the version in the Dockerfile, so the
@@ -109,6 +138,7 @@ saying so. To reach the database from a laptop, use an SSH tunnel — see
 | Path                               | What                                                                                                                                                                                                                                                                                    |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/opt/<app>/.env`                  | secrets and the server's own facts (`APP_SLUG`, `BACKUP_HOST_DIR`), mode 600, owned by `deploy`. Written once; a re-run of setup only appends a line that is missing                                                                                                                    |
+| `/opt/<app>/.backup.env`           | the bucket, its two keys and the restic password for the off-site copy, mode 600, written by the owner by hand and read only by `deploy/backup.sh`. Absent until off-site backups are set up                                                                                            |
 | `/opt/<app>/.release.env`          | which commit is live, where its source is, and the app's name, time zone and locale from `inhouse.config.json`. Written at the moment of the switch                                                                                                                                     |
 | `/opt/<app>/.release-<sha7>.env`   | the same, for a release that has not switched yet. Removed when the release ends, Ctrl-C included                                                                                                                                                                                       |
 | `/opt/<app>/.release.lock`         | held (with `flock`) by the release in progress; holds when it started and which commit. Released when that release ends, however it ends                                                                                                                                                |
@@ -128,11 +158,11 @@ left.
 
 ## Scheduled work
 
-| Unit                  | When                     | What                                                                       |
-| --------------------- | ------------------------ | -------------------------------------------------------------------------- |
-| `<app>-backup.timer`  | 03:15 daily, ±5 min      | `pg_dump` of the database into `/var/backups/<app>`, 14 days kept          |
-| `unattended-upgrades` | nightly; reboot at 04:00 | security updates; the containers come back by themselves after a reboot    |
-| Caddy's own renewal   | continuous               | HTTPS certificates, about 30 days before each expires. Nothing to schedule |
+| Unit                  | When                     | What                                                                                                                                                                                                                                    |
+| --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<app>-backup.timer`  | 03:15 daily, ±5 min      | `pg_dump` of the database into `/var/backups/<app>`, 14 days kept; then, when set up, the dump and `.env` to the off-site bucket through restic, 14 daily / 8 weekly / 6 monthly kept, and `.offsite-last` written in the backup folder |
+| `unattended-upgrades` | nightly; reboot at 04:00 | security updates; the containers come back by themselves after a reboot                                                                                                                                                                 |
+| Caddy's own renewal   | continuous               | HTTPS certificates, about 30 days before each expires. Nothing to schedule                                                                                                                                                              |
 
 The backup timer has `Persistent=true`, so a machine that was off or rebooting at
 03:15 runs it as soon as it is back. Without that line a server rebooting nightly

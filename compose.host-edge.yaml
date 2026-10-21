@@ -1,0 +1,22 @@
+# Laid over compose.yaml by deploy/release.mjs when inhouse.config.json says
+# `deploy.edge: "host"`: the machine already has a web server on ports 80 and
+# 443, so the kit's Caddy is never started and the app is published on the
+# loopback address alone for that web server to proxy to. APP_BIND_PORT is in
+# the server's .env, written by deploy/server-setup.sh --edge host.
+#
+# 127.0.0.1 and nothing wider: a port published on every address is open to
+# the internet below ufw's rules (see compose.yaml), and the whole point of
+# the machine's web server is that it, not the app, faces the world. A web
+# server that itself runs in Docker cannot reach 127.0.0.1; for it,
+# APP_BIND_HOST=172.17.0.1 in .env publishes on the Docker bridge instead,
+# which containers and the machine reach and the internet does not.
+services:
+  app:
+    ports:
+      - '${APP_BIND_HOST:-127.0.0.1}:${APP_BIND_PORT:?APP_BIND_PORT is missing; run server-setup.sh --edge host}:3000'
+  # The kit's Caddy is never started here, not even by a hand-run `up -d`:
+  # a profile nobody enables keeps it out of every command that does not
+  # name it.
+  caddy:
+    profiles:
+      - never

@@ -49,6 +49,7 @@ budget the app enforces itself.
 | ---------------------- | ---------------------- | --------------------------------------------------------------------------------------- |
 | One VPS (2 vCPU, 4 GB) | EUR 5–15 / month       | Hetzner, DigitalOcean, Hostinger; pick the region your data should live in              |
 | Provider backups       | +20–30 % of the server | One checkbox; keep it on                                                                |
+| Off-site backup bucket | cents a month          | A bucket at a second provider for the encrypted copy; `docs/backups.md` sets it up      |
 | Domain                 | EUR 10–15 / year       | Or a subdomain of one you own                                                           |
 | E-mail sending         | Free tier              | Resend: 3,000 e-mails a month, 100 a day                                                |
 | GitHub                 | Free                   | Private repository; 2,000 CI minutes a month, see `docs/agents.md` for keeping under it |

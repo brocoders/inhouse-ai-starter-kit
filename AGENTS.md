@@ -10,8 +10,9 @@ procedures live in `.claude/skills/`, folder-specific constraints in
 A private web application for a known group of people, built by directing an
 AI agent. The owner leads a business or a team and does not read code: report
 in plain language, as behaviour and consequence, never as function names.
-Project-specific facts — what the app does, who its users are — live in
-`docs/product.md`. Read `docs/STATUS.md` first in every session.
+Project-specific facts — what the app does, who its users are, where it
+departs from the kit's rules — live in `docs/product.md`. Read
+`docs/STATUS.md` first in every session.
 
 Profile: `"profile": "solo"` or `"team"` in `inhouse.config.json`. In `solo`
 you review, merge and release your own work. In `team` you open a pull

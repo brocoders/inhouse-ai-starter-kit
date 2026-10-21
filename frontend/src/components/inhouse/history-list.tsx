@@ -1,6 +1,7 @@
 import type { AuditEvent } from '@shared/schemas';
 import { formatRelative } from '@/lib/format';
-import { t } from '@/lib/i18n';
+import { describeValue } from '@/lib/history-text';
+import { t, type TextKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,6 +11,10 @@ import { cn } from '@/lib/utils';
  * kit deliberately has no history screen beyond this: a plain list answers
  * "who changed this and when", and anything richer is a report somebody has to
  * maintain.
+ *
+ * The actions come from `shared/audit.ts`; each has one sentence in the
+ * dictionary under `history.<action>`. A value with no better name is written
+ * by `lib/history-text.ts`, never as [object Object] or a 36-character id.
  */
 export function HistoryList({
   events,
@@ -44,10 +49,15 @@ export function HistoryList({
 }
 
 function describe(value: unknown): string {
-  if (value === null || value === undefined || value === '') return t('history.empty');
-  if (typeof value === 'boolean') return value ? 'yes' : 'no';
-  return String(value);
+  return describeValue(value, {
+    empty: t('history.empty'),
+    record: t('history.record'),
+    yes: t('history.yes'),
+    no: t('history.no'),
+  });
 }
+
+const isEmpty = (value: unknown) => value === null || value === undefined || value === '';
 
 function sentence(
   event: AuditEvent,
@@ -55,11 +65,13 @@ function sentence(
   valueLabel: (field: string, value: unknown) => string,
 ): string {
   const actor = event.actorName ?? t('history.someone');
-  if (event.action === 'created') return t('history.created', { actor });
-  if (event.action === 'deleted') return t('history.deleted', { actor });
-  if (event.action === 'restored') return t('history.restored', { actor });
   const changes = Object.entries(event.changes);
-  if (!changes.length) return t('history.created', { actor });
+  // Every action but an update is one sentence about the whole record; an
+  // update with nothing recorded reads as the record appearing.
+  if (event.action !== 'updated' || !changes.length) {
+    const key: TextKey = event.action === 'updated' ? 'history.created' : `history.${event.action}`;
+    return t(key, { actor });
+  }
   // One line per event, not per field: an edit that touched three fields is
   // one thing the person did, and three lines make it look like three.
   return changes
@@ -68,10 +80,8 @@ function sentence(
       const name = fieldLabel(field);
       const from = valueLabel(field, change.from);
       const to = valueLabel(field, change.to);
-      if (change.from === null || change.from === undefined || change.from === '')
-        return t('history.set', { actor: who, field: name, to }).trim();
-      if (change.to === null || change.to === undefined || change.to === '')
-        return t('history.cleared', { actor: who, field: name }).trim();
+      if (isEmpty(change.from)) return t('history.set', { actor: who, field: name, to }).trim();
+      if (isEmpty(change.to)) return t('history.cleared', { actor: who, field: name }).trim();
       return t('history.changed', { actor: who, field: name, from, to }).trim();
     })
     .join(', ');

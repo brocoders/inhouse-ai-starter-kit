@@ -29,6 +29,11 @@ concurrency:
 jobs:
   application:
     name: Application checks
+    # No-CI mode: set the repository variable INHOUSE_CI to "off" (Settings →
+    # Secrets and variables → Actions → Variables) and this job is skipped;
+    # the gate is then `pnpm check` on the laptop, which the release skill
+    # runs before every release. The cheap hygiene workflow still runs.
+    if: vars.INHOUSE_CI != 'off'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     services:
@@ -54,9 +59,18 @@ jobs:
       # The migration check compares server/drizzle/*.sql with main. A pull
       # request checkout has no main, so bring just its tip; on main itself the
       # comparison is trivially clean.
+      # The checkout keeps no credentials (persist-credentials: false), so on
+      # a private repository this fetch has to carry the workflow's own token
+      # itself; without it the step was the first red day of the first real
+      # project. The token lives for this run only.
       - name: Fetch main for the migration check
         if: github.ref != 'refs/heads/main'
-        run: git fetch --depth=1 origin main:refs/remotes/origin/main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
+            fetch --depth=1 origin main:refs/remotes/origin/main
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -71,7 +85,12 @@ jobs:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
+      # NPM_TOKEN is for a private package, if the app has one: its .npmrc
+      # names the registry and ${NPM_TOKEN}; the secret of the same name
+      # fills it in here. Empty, and so harmless, until both exist.
       - run: pnpm install --frozen-lockfile --prefer-offline
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       # `pnpm check` is the whole gate: hygiene, formatting, both typechecks,
       # the tests, the frontend build and the design checker. Every build step
       # happens exactly once inside it, so nothing here may repeat one.
