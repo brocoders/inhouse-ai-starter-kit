@@ -6,6 +6,12 @@
 //
 // Both roads end at the same Drizzle query builder, so no query in this
 // codebase knows which one it is talking to.
+//
+// PGlite is a runtime dependency, not a dev one, although production never
+// opens it: this file imports it unconditionally, and the first release of the
+// first app built on the kit failed at the migration because the image had no
+// such package. Shipping it costs a few megabytes; a conditional import would
+// cost every reader a second code path.
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
@@ -14,6 +20,7 @@ import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import path from 'node:path';
 import pg from 'pg';
 import { config } from '../config.ts';
+import { log } from '../log.ts';
 import { schema } from './schema.ts';
 import { cachedDataDir } from './snapshot.ts';
 
@@ -35,14 +42,20 @@ export function createDb(): DbHandle {
       connectionString: config.databaseUrl,
       max: 10,
       connectionTimeoutMillis: 5_000,
+      // Every connection speaks UTC, so `now()` and any date the database works
+      // out for itself mean the same thing as a date this app wrote. Handed to
+      // the server as a startup option rather than run as a query on connect:
+      // a query there races the first real one and pg prints a deprecation
+      // warning at the top of every script, which owners read as an error.
+      options: '-c TimeZone=UTC',
     });
-    // A pool that loses a connection emits an error nobody is listening for,
-    // which would take the whole process down. Losing one connection is not fatal.
-    pool.on('error', () => {});
-    // Every connection speaks UTC, so `now()` and any date the database works
-    // out for itself mean the same thing as a date this app wrote.
-    pool.on('connect', (client) => {
-      void client.query("set time zone 'UTC'");
+    // A pool that loses an idle connection emits an error nobody is listening
+    // for, which would take the whole process down. Losing one connection is
+    // not fatal — the next query opens a new one — but it is never silent: the
+    // usual cause is the database restarting under a system update, and a
+    // night of that showing nowhere is how a day of work goes missing.
+    pool.on('error', (error) => {
+      log.warn({ err: error }, 'a pooled database connection was lost; the next query reconnects');
     });
     return {
       db: drizzlePg({ client: pool, schema }) as unknown as Db,

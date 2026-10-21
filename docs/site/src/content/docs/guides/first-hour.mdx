@@ -124,10 +124,13 @@ every one of them lands in a single small file you can edit any day.
 
 ## 6. Let it start the app
 
-The agent installs what the app depends on, creates a database on your own
-machine, makes you its owner, puts some invented data in it, and starts the app.
-It also downloads, once, the browser it takes screenshots with. You do not type
-any of those commands; it runs `pnpm install`,
+The agent first checks that your machine has Node 24 or 26 and pnpm 11, and if
+not, hands you the two commands that install them. Then it installs what the
+app depends on, creates a database on your own machine, makes you its owner,
+puts some invented data in it, and starts the app. It also downloads, once, the
+browser it takes screenshots with. You do not type any of those commands
+yourself unless the agent asks you to — two of them may not run from inside its
+sandbox; it runs `pnpm install`,
 `pnpm exec playwright install chromium`,
 `pnpm db:seed --owner you@example.com "Your Name" --sample` with your own address
 and name, and `pnpm dev`, and tells you what happened.

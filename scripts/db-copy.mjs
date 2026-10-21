@@ -61,12 +61,15 @@ const DEV = path.join(ROOT, 'data', 'dev');
 const DUMP = path.join(DEV, 'copy.sql');
 const PGLITE_DIR = path.join(DEV, 'db');
 
-// --inserts rather than the default COPY blocks: the copy is replayed
-// statement by statement into an embedded Postgres that has no stdin to feed a
-// COPY from, and the file stays readable if you ever need to look inside it.
+// The Compose invocation is the one deploy/backup.sh uses: the live release's
+// compose.yaml lives under current/, and the app's settings in the deploy
+// folder's .env. --inserts rather than the default COPY blocks: the copy is
+// replayed statement by statement into an embedded Postgres that has no stdin
+// to feed a COPY from, and the file stays readable if you ever need to look
+// inside it.
 const REMOTE = [
-  'docker compose',
-  `-f ${config.deploy.dir}/compose.yaml`,
+  `cd '${config.deploy.dir.replace(/'/g, `'\\''`)}' &&`,
+  'docker compose -f current/compose.yaml --project-directory . --env-file .env',
   'exec -T db',
   'pg_dump -U app -d app --format=plain --no-owner --no-privileges --inserts --rows-per-insert=500',
 ].join(' ');
@@ -105,7 +108,7 @@ if (ssh.status !== 0) {
   console.error(
     `\nThe server did not give us a copy (ssh exited ${ssh.status}). The lines above say why. The usual causes:\n` +
       `  · "${config.deploy.host}" is not in your ~/.ssh/config, or the key is not loaded\n` +
-      `  · the app is not running there, or compose.yaml is not in ${config.deploy.dir}\n` +
+      `  · the app is not running there, or nothing has been released to ${config.deploy.dir} yet\n` +
       '  · the database container is not called "db" in compose.yaml\n' +
       'Nothing on the server was changed.',
   );

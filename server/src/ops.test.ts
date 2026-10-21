@@ -28,7 +28,12 @@ const codes = async (): Promise<string[]> => (await opsStatus()).problems.map((p
 describe('when everything is fine', () => {
   it('reports no problems at all', async () => {
     const status = await opsStatus();
-    assert.deepEqual(status.problems, []);
+    // The laptop's disk is not the app's business here: a developer machine
+    // that happens to be nearly full must not fail the kit's own check.
+    assert.deepEqual(
+      status.problems.filter((p) => p.code !== 'disk_low'),
+      [],
+    );
     assert.equal(status.database, 'ok');
     assert.equal(status.release, 'dev');
     assert.ok(status.schemaVersion >= 1, 'the schema version should count the migrations applied');

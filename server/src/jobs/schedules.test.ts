@@ -6,7 +6,12 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import { jobs, schedules } from '../db/schema.ts';
 import { closeDb, ready, reset } from '../test/helpers.ts';
-import { dueSchedules, registeredSchedules, schedule } from './schedules.ts';
+import {
+  dueSchedules,
+  registeredSchedules,
+  retireUnknownSchedules,
+  schedule,
+} from './schedules.ts';
 
 before(ready);
 after(closeDb);
@@ -83,5 +88,20 @@ describe('a recurring job', () => {
     await import('./definitions.ts');
     const names = registeredSchedules().map((s) => s.name);
     assert.ok(names.includes('items.due-reminder'));
+  });
+
+  it('forgets a schedule whose job the code no longer declares', async () => {
+    // The row a deleted job leaves behind: lined up, never run, and with no
+    // code to run it the health page would call it late for ever.
+    schedule('test.daily', { daily: '07:00' });
+    await dueSchedules(new Date('2026-06-01T09:00:00Z'));
+    await db.insert(schedules).values({
+      name: 'test.retired',
+      spec: 'daily:07:00',
+      nextRunAt: new Date('2026-06-01T07:00:00Z'),
+    });
+    await retireUnknownSchedules(db);
+    assert.equal(await row('test.retired'), undefined);
+    assert.notEqual(await row('test.daily'), undefined);
   });
 });

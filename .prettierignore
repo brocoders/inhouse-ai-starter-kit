@@ -10,3 +10,9 @@ docs/site/dist
 # The originals are formatted; the copies are generated and are not committed.
 docs/site/.astro
 docs/site/src/content/docs/reference
+
+# The development database and outbox. The sandbox hides this folder from the
+# agent, and Prettier walking into it stopped `pnpm check` before it checked
+# anything. This line is not enough on its own — Prettier still looks inside
+# the folder while expanding `.` — so the format scripts also pass '!data'.
+data

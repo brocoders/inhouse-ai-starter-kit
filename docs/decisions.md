@@ -200,6 +200,19 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   kit's managed files into a project is a later addition.
 - Validation: the owner builds a real project on it next and feeds back;
   the kit is also exercised by building two recipe apps.
+- **Version 0.2 (21 October 2026) fixes only what stopped a first release or
+  a first session** on the three projects that used the kit; the review is
+  `docs/reviews/2026-10-21-feedback-review.md`. Choices made there: PGlite
+  ships in the production image rather than behind a conditional import
+  (a few megabytes against a second code path every reader must hold);
+  the app's name, time zone and locale are read from `inhouse.config.json`
+  in development, `.env` still winning, so `/setup` has one place to write;
+  the seed script is compiled into the image so a fresh server makes its
+  first owner from inside the container; a blank `.env` line means "not
+  set"; the guard and the write hook allow a session's own scratch files
+  and memory folder; Node 24 or 26 are both accepted. Mechanisms every app
+  needed and built itself (shared server, off-site backups, an outbox for
+  problems, interval jobs, a "More" tab) are version 0.3, not this one.
 
 ## Open
 

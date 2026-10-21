@@ -108,8 +108,50 @@ function forTests(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   };
 }
 
-export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
-  const env = source.NODE_TEST_CONTEXT === undefined ? source : forTests(source);
+/**
+ * The app's name, time zone and locale, from the file `/setup` fills in.
+ *
+ * `.env` wins when it names them, the file comes next, the defaults last. In
+ * development nobody writes `.env` for these, so without this step the owner
+ * answers the setup interview and still sees "InHouse" and UTC. On the server
+ * the release writes the same three values from this file into
+ * `.release.env`, and the image carries no copy of it, so production never
+ * reads it. A file that is missing or malformed is simply not there. Tests
+ * never read it either — see `forTests`: a test suite that inherits the app's
+ * real name and zone starts failing the day `/setup` is run.
+ */
+function fromConfigFile(file: string): NodeJS.ProcessEnv {
+  try {
+    const raw = JSON.parse(readFileSync(file, 'utf8'));
+    const named: NodeJS.ProcessEnv = {};
+    if (typeof raw.appName === 'string') named.APP_NAME = raw.appName;
+    if (typeof raw.timeZone === 'string') named.APP_TIME_ZONE = raw.timeZone;
+    if (typeof raw.locale === 'string') named.APP_LOCALE = raw.locale;
+    return named;
+  } catch {
+    // No file, or not JSON: scripts/lib/config.mjs tells the owner about that
+    // where it matters. Here the defaults apply.
+    return {};
+  }
+}
+
+/**
+ * An empty value is no value. `server-setup.sh` writes `RESEND_API_KEY=` and
+ * `EMAIL_FROM=` as lines to fill in later, and the first release of the first
+ * app stopped because "" is too short to be a key. A line left blank means
+ * "not set", the same as a line left out.
+ */
+function withoutBlanks(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(source).filter(([, value]) => value !== ''));
+}
+
+export function loadConfig(
+  source: NodeJS.ProcessEnv = process.env,
+  configFile: string = path.resolve('inhouse.config.json'),
+): Config {
+  const testing = source.NODE_TEST_CONTEXT !== undefined;
+  const given = { ...(testing ? {} : fromConfigFile(configFile)), ...withoutBlanks(source) };
+  const env = testing ? forTests(given) : given;
   const parsed = Env.safeParse(env);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.') || 'env'}: ${i.message}`);
@@ -129,7 +171,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
       'DEV_AUTO_SIGN_IN_EMAIL is set. That setting lets anyone in without signing in and exists only for development. Remove it before running in production.',
     );
   }
-  if (e.RESEND_API_KEY && !source.EMAIL_FROM) {
+  if (e.RESEND_API_KEY && !env.EMAIL_FROM) {
     problems.push(
       'RESEND_API_KEY is set but EMAIL_FROM is not. Resend refuses mail from an address you have not verified, so set EMAIL_FROM to an address on your own domain.',
     );

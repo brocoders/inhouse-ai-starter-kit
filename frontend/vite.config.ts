@@ -1,13 +1,29 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// The name shown on the home screen and in the browser tab. One value, read
-// here at build time, so renaming the app is one line in .env and not a search
-// across the source.
-const appName = process.env.VITE_APP_NAME ?? 'InHouse';
+// The name shown on the home screen, in the browser tab and in the app's own
+// words. One value, read here at build time from inhouse.config.json — the
+// file `/setup` fills in — and handed to index.html (`%VITE_APP_NAME%`) and to
+// en.ts (`import.meta.env.VITE_APP_NAME`), so renaming the app is one line in
+// one file. `VITE_APP_NAME` in the environment still wins, for a build that
+// wants a different name without touching the file. The server build reads
+// the same file, which the release archive carries.
+function configuredName(): string {
+  try {
+    const file = path.resolve(import.meta.dirname, '..', 'inhouse.config.json');
+    const name = JSON.parse(readFileSync(file, 'utf8')).appName;
+    return typeof name === 'string' && name.trim() ? name.trim() : 'InHouse';
+  } catch {
+    // No file yet (a clone before /setup): the kit's own name until there is one.
+    return 'InHouse';
+  }
+}
+const appName = (process.env.VITE_APP_NAME ??= configuredName());
 
 export default defineConfig({
   // The config lives beside the code it builds, so the project root is this

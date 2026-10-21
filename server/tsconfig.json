@@ -10,5 +10,5 @@
     "erasableSyntaxOnly": true,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "../shared/**/*.ts"]
+  "include": ["src/**/*.ts", "../shared/**/*.ts", "../scripts/seed.ts"]
 }

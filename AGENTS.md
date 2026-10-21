@@ -25,6 +25,9 @@ request and stop.
 - `pnpm db:copy` — pull a copy of production into the local database
 - `pnpm shots /route` — phone and desktop screenshots into `.shots/`
 - `pnpm release <sha>` — release to the server (gated; see `/release`)
+- Inside the sandbox `pnpm` cannot take its lock: run scripts as
+  `node --run <name>` (`node --run test`, `node --run check`). What else
+  the sandbox stops, and what to do instead: `docs/agents.md`.
 
 ## Boundaries
 
@@ -38,7 +41,9 @@ existing one does; any change to `deploy/`; spending the owner's money
 (new services, accounts, larger server).
 
 **Never:** commit a secret, token, key or server address (the checker blocks
-it; `~/.config/inhouse/<project>/` is where they live); edit files under
+it; `~/.config/inhouse/<project>/` is where they live); print a line of
+`.env` or any key, even to check it (a key shown once is a key rotated);
+edit files under
 `components/ui/` (re-add from the registry); modify an applied migration;
 write to the production database outside the app or a migration; run the
 full suite repeatedly without a new reason; silence an error with an empty
@@ -53,7 +58,8 @@ you will not pursue. If you are weighing a choice, give a recommendation.
 
 When the owner describes a problem, asks a question or thinks out loud, the
 deliverable is your assessment. Report findings and stop; do not fix until
-asked. Work goes research → plan → build, with a message between each; a
+asked, and do not commit the findings either: a merged document is a
+decision. Work goes research → plan → build, with a message between each; a
 long silent stretch reads as being stuck.
 
 Plan when the change is uncertain or touches several files; skip the plan
@@ -70,6 +76,13 @@ Pause for the owner only when the work genuinely requires them: a
 destructive or irreversible action, a real scope change, or input only they
 can provide. Then ask and end the turn rather than ending on a promise.
 
+Another session may be working in this same checkout. Stage files by name,
+never `git add -A`; leave nothing staged between steps; `git fetch` and
+look before each commit; rebase before pushing. A refusal means that shape
+of the action was refused, not that the capability is missing: check
+`.claude/settings.json` and the skills for the project's own route before
+reporting a blocker.
+
 Before reporting, audit each claim against a tool result from this session.
 Reading code is not verification; a claim is verified when a command ran and
 its output supports it. If tests fail, say so with the output; if a step was
@@ -84,7 +97,8 @@ as a numbered list of exactly what to click and what to send back.
 Roles by tier: an orchestrator that plans, reviews and integrates; routine
 implementers for work fenced by tests; deep implementers for anything that
 touches money, authentication, migrations, locks or external input, however
-small; an escalation tier for architecture, root causes and being stuck.
+small; an escalation tier for architecture, root causes and being stuck —
+which includes re-covering the same ground across several turns.
 Route by what the change touches, not by its size. Tune effort before
 switching models. A session cannot change its own model: when a task needs a
 stronger one, say so plainly and name why.
@@ -92,7 +106,10 @@ stronger one, say so plainly and name why.
 Concurrent implementers each get their own worktree and never share a
 checkout or a database. Two at a time on one machine. Implementers do not
 commit, push or open pull requests; they leave a diff and report what they
-could not do. Never hand an implementer credentials or production data.
+could not do. Never hand an implementer credentials or production data. A
+brief names the branch, the files to read first, the invariants, the tests
+to add and the command that proves it. The orchestrator reads the diff,
+never only the report: a changed or deleted test is the riskiest edit.
 
 ## Context
 

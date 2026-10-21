@@ -7,11 +7,11 @@ written next to it.
 
 ## Runtime
 
-| Piece      | Version           | Why                                                 | Watch out                                                               |
-| ---------- | ----------------- | --------------------------------------------------- | ----------------------------------------------------------------------- |
-| Node       | 24 LTS (`.nvmrc`) | Active LTS until Oct 2026, maintained to Apr 2028.  | Node 26 becomes LTS on 28 Oct 2026; move deliberately, not by accident. |
-| pnpm       | 11                | Frozen lockfile, fast, one store across worktrees.  |                                                                         |
-| TypeScript | 5.9 / strict      | Types are the documentation an agent cannot ignore. |                                                                         |
+| Piece      | Version                 | Why                                                                                                                                                            | Watch out                                                                                                                       |
+| ---------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Node       | 24 LTS (`.nvmrc`) or 26 | 24 is maintained to Apr 2028; 26 becomes LTS on 28 Oct 2026. `engines` allows either, because a new laptop arrives with whichever nodejs.org offers that week. | The image and `.nvmrc` stay on 24 until 26 has been run on a real project; a fresh Mac with Node 26 must still install and run. |
+| pnpm       | 11                      | Frozen lockfile, fast, one store across worktrees.                                                                                                             |                                                                                                                                 |
+| TypeScript | 5.9 / strict            | Types are the documentation an agent cannot ignore.                                                                                                            |                                                                                                                                 |
 
 ## Server
 

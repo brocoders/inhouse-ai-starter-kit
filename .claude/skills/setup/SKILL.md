@@ -43,8 +43,14 @@ the named key, save. **Never type a key for them and never read `.env` back.**
 
 ## 4. Run it
 
+0. `node --version` and `pnpm --version` first. The kit needs Node 24 or 26
+   and pnpm 11. Anything else: stop, and hand them the two commands — the
+   installer at nodejs.org for the LTS version, then `corepack enable` — and
+   say what each should print. This is the first thing a new laptop gets wrong.
 1. `pnpm install`, then once `pnpm exec playwright install chromium` — the
-   browser `pnpm shots` drives; screenshots fail without it.
+   browser `pnpm shots` drives; screenshots fail without it. Both may refuse
+   to run inside the sandbox (pnpm cannot take its lock there): ask the owner
+   to run them in their own terminal and say what they should see.
 2. `pnpm db:seed --owner their@email "Their Name" --sample`, with the address
    and name from the interview — creates the database, makes them the owner
    and adds the example rows. It prints a sign-in link; show it to them.

@@ -145,16 +145,17 @@ if (withSample) {
   }
 }
 
-// A link to get in with. With a Resend key this goes to their inbox instead.
-if (!config.isProduction) {
-  await auth.api.signInMagicLink({ body: { email, callbackURL: '/' }, headers: new Headers() });
-  const sent = lastOutboxMessage();
-  const link = sent?.body.match(/https?:\/\/\S+/)?.[0];
-  process.stdout.write(
-    link
-      ? `\nSign in here (the link works once, within the hour):\n\n  ${link}\n\n`
-      : `\nA sign-in link has been sent to ${email}.\n\n`,
-  );
-}
+// A link to get in with. With a Resend key it goes to their inbox; without
+// one — on a laptop, or on a server whose e-mail lines are not filled in yet,
+// which is how the first owner is usually made — it is printed here, and is
+// the only way in.
+await auth.api.signInMagicLink({ body: { email, callbackURL: '/' }, headers: new Headers() });
+const sent = config.resendApiKey ? undefined : lastOutboxMessage();
+const link = sent?.body.match(/https?:\/\/\S+/)?.[0];
+process.stdout.write(
+  link
+    ? `\nSign in here (the link works once, within the hour):\n\n  ${link}\n\n`
+    : `\nA sign-in link has been sent to ${email}.\n\n`,
+);
 
 await handle.close();

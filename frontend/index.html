@@ -8,30 +8,20 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="InHouse" />
+    <meta name="apple-mobile-web-app-title" content="%VITE_APP_NAME%" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#f9fafb" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>InHouse</title>
-    <!-- The theme is decided before the first paint. Anything that waits for
-         React shows a white page to someone who chose dark, which reads as a
-         flash of the wrong app. Three lines, no imports, deliberately here. -->
-    <script>
-      (function () {
-        try {
-          var saved = localStorage.getItem('theme');
-          var dark =
-            saved === 'dark' ||
-            (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        } catch (e) {
-          /* Private windows refuse storage; the light theme is the fallback. */
-        }
-      })();
-    </script>
+    <!-- The name is filled in at build time from inhouse.config.json; see
+         vite.config.ts. -->
+    <title>%VITE_APP_NAME%</title>
+    <!-- The theme is decided before the first paint, by a file rather than an
+         inline script: the production security policy blocks inline ones.
+         Why is explained in public/theme.js. -->
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>

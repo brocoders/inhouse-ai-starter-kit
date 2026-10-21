@@ -339,6 +339,24 @@ describe('changing an item', () => {
     assert.equal(now.title, 'Book the hall for Friday');
   });
 
+  it('lets exactly one of two simultaneous saves win', async () => {
+    // Both people read the same copy and press save in the same instant. A
+    // check that reads, compares and then writes lets both through; only a
+    // write that carries the copy's updatedAt in its own condition does not.
+    const created = await json<Item>(await call('POST', '/api/items', { title: 'Order chairs' }));
+    const [first, second] = await Promise.all([
+      call('PATCH', `/api/items/${created.id}`, {
+        title: 'Order 40 chairs',
+        updatedAt: created.updatedAt,
+      }),
+      call('PATCH', `/api/items/${created.id}`, {
+        title: 'Order 60 chairs',
+        updatedAt: created.updatedAt,
+      }),
+    ]);
+    assert.deepEqual([first.status, second.status].sort(), [200, 409]);
+  });
+
   it('accepts a save from somebody with the current copy', async () => {
     const created = await json<Item>(
       await call('POST', '/api/items', { title: 'Pay the invoice' }),

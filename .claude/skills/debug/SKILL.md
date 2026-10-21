@@ -39,6 +39,9 @@ cause. Before you blame anything:
 - Check the boundary you did not check: the time zone at midnight, a number
   that is zero, a name with an apostrophe, a second request arriving first.
 - Look at what changed. `git log` around the day it started beats theory.
+- A sign-in, redirect or approval flow that ends in the wrong place: take a
+  network trace of it and of one that works, and compare, before theorising.
+  The server log only says whether the callback arrived.
 - If two attempts fail the same way, stop and re-diagnose. The third variation
   of a wrong idea is still wrong.
 
@@ -46,7 +49,10 @@ cause. Before you blame anything:
 
 Fix the cause. A cleanup command handed to the owner is not a fix. Add the test
 that would have caught it — marked `postgres` if it only fails on the real
-database. If it reached people, the `incident` skill writes it down.
+database. If explaining it needed you to read something over SSH that the app
+cannot show, showing that fact on the health page is part of the fix: without
+it, "resting until 14:24" and "broken" look the same to the owner. If it
+reached people, the `incident` skill writes it down.
 
 Report what happened as behaviour: what the owner saw, why, and what now stops
 it happening again.

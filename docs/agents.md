@@ -59,6 +59,19 @@ which is what makes auto mode comfortable.
 server and a sandbox cannot supervise what happens on the other end. Those
 still ask.
 
+### What the sandbox stops, and what to do instead
+
+Learned on the first project built from the kit; each of these cost a session
+an hour of guessing.
+
+| It stops                                                                                      | Do this instead                                                                                                                                            |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install`, `pnpm add`, `pnpm db:generate` (pnpm's lock lives in a read-only temp folder) | Ask the owner to run them in their own terminal, or run `node --run <script>` for anything that is a script; `drizzle-kit generate` can be called directly |
+| Reading or writing `data/` (the development database and mail outbox)                         | `pnpm db:seed` and reading the outbox go through the owner's terminal; `.prettierignore` keeps Prettier out of it so `node --run check` still runs         |
+| Opening a local port, reaching `localhost`                                                    | `pnpm shots`, `curl` against the dev server and socket tests need the sandbox off for that command, or the owner's terminal                                |
+| Writing outside the project                                                                   | Your memory folder and `$TMPDIR` are allowed; nothing else is yours                                                                                        |
+| The desktop app's preview sets `PORT`                                                         | `.claude/launch.json` pins the API to 3000; use that configuration                                                                                         |
+
 - **macOS** — works as described, built in.
 - **Linux** — works as described.
 - **Windows** — there is no sandbox on native Windows. Work inside **WSL2**:
