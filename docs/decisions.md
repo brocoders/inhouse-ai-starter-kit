@@ -241,6 +241,15 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   told again. The health watch tells owners on the second sighting, a
   quarter of an hour apart, because the page's own thresholds already
   filter noise and one more interval costs nothing a person would notice.
+  Off-site backups use restic to any S3-compatible bucket, not `age` plus
+  an upload tool: one binary from Ubuntu's own repository encrypts,
+  uploads, keeps copies and restores, and the provider stays the owner's
+  choice. The server's `.env` goes with the dump, because a rebuilt server
+  with data and no secrets is half a restore. Retention is automated from
+  the start, with the proving restore a documented step rather than a
+  gate, because a copy nobody prunes is the one that fills the bucket. An
+  off-site failure does not fail the backup or the release that called it:
+  the dump on disk is real, and the stale marker reaches the owner.
 
 ## Open
 

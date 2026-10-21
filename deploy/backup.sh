@@ -16,7 +16,12 @@
 #
 # This is a copy on the same disk as the original. It answers "the migration ate
 # a column" and "someone deleted the wrong record"; it does not answer "the
-# machine is gone". The provider's snapshot does that. See docs/backups.md.
+# machine is gone". The provider's snapshot does that, and so does the off-site
+# copy below once <folder>/.backup.env exists: the new dump and the server's
+# .env go to an S3-compatible bucket through restic, encrypted with the
+# password in that file, keeping 14 daily, 8 weekly and 6 monthly copies. The
+# file is written by the owner by hand and read by nothing but this script.
+# See docs/backups.md.
 set -euo pipefail
 umask 077
 
@@ -109,5 +114,41 @@ trap - EXIT
 removed=$(find "$out" -maxdepth 1 -type f \( -name 'app-*.dump' -o -name 'pre-restore-app-*.dump' \) \
 	-mtime +"$keep_days" -print -delete | wc -l | tr -d ' ')
 
-printf '{"event":"backup_completed","file":"%s","bytes":%s,"removed_old":%s,"off_server":false}\n' \
-	"$final" "$size" "$removed"
+# --- off-site ---------------------------------------------------------------
+# Only when the owner has set it up. A failure here is written down and does
+# not fail the backup: the dump on disk is real and the release that called
+# this may go on. The app notices instead — the marker file below goes stale
+# and the health page says so, which reaches the owner through health.watch.
+off_server=false
+offsite_env=$dir/.backup.env
+if [ -f "$offsite_env" ]; then
+	if ! command -v restic >/dev/null 2>&1; then
+		echo '{"event":"backup_offsite_skipped","reason":"restic is not installed"}' >&2
+	else
+		# The four lines of the file become restic's environment for this
+		# process only. Nothing below prints them, and nothing may.
+		set -a
+		# shellcheck disable=SC1090
+		. "$offsite_env"
+		set +a
+		if [ -z "${RESTIC_REPOSITORY:-}" ] || [ -z "${RESTIC_PASSWORD:-}" ]; then
+			echo '{"event":"backup_offsite_skipped","reason":"RESTIC_REPOSITORY or RESTIC_PASSWORD missing in .backup.env"}' >&2
+		elif
+			# Make the repository on first use; ask quietly whether it exists.
+			{ restic cat config >/dev/null 2>&1 || restic init -q >/dev/null; } &&
+				restic backup -q --tag "$app" "$final" "$dir/.env" >/dev/null &&
+				restic forget -q --tag "$app" --keep-daily 14 --keep-weekly 8 --keep-monthly 6 --prune >/dev/null
+		then
+			off_server=true
+			# When the last copy left: a dot-file, so it is not mistaken for a
+			# dump, written whole so a reader never sees half a date.
+			printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$out/.offsite-last.partial"
+			mv "$out/.offsite-last.partial" "$out/.offsite-last"
+		else
+			echo '{"event":"backup_offsite_failed","reason":"restic did not finish; see its output above"}' >&2
+		fi
+	fi
+fi
+
+printf '{"event":"backup_completed","file":"%s","bytes":%s,"removed_old":%s,"off_server":%s}\n' \
+	"$final" "$size" "$removed" "$off_server"

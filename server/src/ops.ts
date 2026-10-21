@@ -4,7 +4,7 @@
 // is, and the page says so in one line. Each problem is a sentence somebody
 // who does not read code can act on — what happened, and what it means for
 // them — never a function name or a stack trace.
-import { readdir, stat, statfs } from 'node:fs/promises';
+import { readdir, readFile, stat, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import type { OpsStatus, Problem } from '../../shared/schemas.ts';
@@ -19,6 +19,7 @@ export const startedAt = new Date();
 
 const HOUR_MS = 3_600_000;
 const BACKUP_STALE_MS = 36 * HOUR_MS;
+const OFFSITE_STALE_MS = 48 * HOUR_MS;
 const SCHEDULE_LATE_MS = 2 * HOUR_MS;
 const WORKER_STALE_MS = 5 * 60_000;
 const LOW_DISK_RATIO = 0.1;
@@ -41,11 +42,31 @@ async function newestBackup(): Promise<Date | null> {
   try {
     let newest: Date | null = null;
     for (const name of await readdir(config.backupDir)) {
+      // Dot-files are markers (.offsite-last), not dumps.
+      if (name.startsWith('.')) continue;
       const info = await stat(path.join(config.backupDir, name)).catch(() => null);
       if (!info?.isFile()) continue;
       if (!newest || info.mtime > newest) newest = info.mtime;
     }
     return newest;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * When the last copy left the machine, from the marker deploy/backup.sh
+ * writes after a successful off-site run. Null when off-site is not set up —
+ * the file does not exist — which is not a problem, just a fact.
+ */
+export const OFFSITE_MARKER = '.offsite-last';
+
+async function lastOffsite(): Promise<Date | null> {
+  if (!config.backupDir) return null;
+  try {
+    const text = await readFile(path.join(config.backupDir, OFFSITE_MARKER), 'utf8');
+    const at = new Date(text.trim());
+    return Number.isNaN(at.getTime()) ? null : at;
   } catch {
     return null;
   }
@@ -175,6 +196,18 @@ export async function opsStatus(now: Date = new Date()): Promise<OpsStatus> {
         ? 'The last backup is more than a day and a half old. If the server were lost now, recent work would go with it.'
         : 'No backup has been made yet. If the server were lost now, everything would go with it.',
       since: lastBackup ? lastBackup.toISOString() : null,
+      href: null,
+    });
+  }
+
+  const offsite = await lastOffsite();
+  if (offsite && now.getTime() - offsite.getTime() > OFFSITE_STALE_MS) {
+    problems.push({
+      code: 'offsite_stale',
+      severity: 'warning',
+      message:
+        "The off-site copy of the backups is more than two days old. The nightly dump may still be fine; the copy that survives losing this server is not being made. Check the backup unit's log on the server.",
+      since: offsite.toISOString(),
       href: null,
     });
   }

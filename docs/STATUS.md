@@ -29,8 +29,7 @@ Landed so far: (1) the shared-server path — `server-setup.sh --shared`
 and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
 phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
 one home for the history vocabulary; (5) the notify outbox with owner
-alerts. Still to come:
-restic off-site backups, the two-part first-paint budget, CI on a private
+alerts; (6) restic off-site backups. Still to come: the two-part first-paint budget, CI on a private
 repository, and a home for an app's departures from the kit.
 
 ## Known problems
@@ -143,3 +142,14 @@ step is one commit with its tests and its documentation.
    active owner, once, about a problem seen on two runs in a row; nothing
    on the first run after a start. Migration `0001_notify_outbox`, safe to
    run twice. Six new tests in `notify.test.ts`.
+6. **Off-site backups, built in.** When `/opt/<app>/.backup.env` exists
+   (four lines the owner writes by hand: the bucket, two S3 keys, the
+   restic password), `backup.sh` sends the new dump and the server's
+   `.env` to any S3-compatible bucket through restic and keeps 14 daily,
+   8 weekly and 6 monthly copies; a failure there is reported and never
+   fails the dump. A dot-file marker in the backup folder tells the health
+   page when the last copy left; older than two days is a warning, which
+   `health.watch` mails. `server-setup.sh` installs restic. Proven by
+   `scripts/backup.test.mjs` against stubbed docker and restic, including
+   that no key reaches the output. `docs/backups.md` has the set-up and
+   the proving restore.

@@ -11,7 +11,7 @@ import { config } from './config.ts';
 import { db } from './db/index.ts';
 import { jobs, notifications, schedules } from './db/schema.ts';
 import { log } from './log.ts';
-import { opsStatus } from './ops.ts';
+import { OFFSITE_MARKER, opsStatus } from './ops.ts';
 import { actAs, call, closeDb, json, makeUser, ready, reset } from './test/helpers.ts';
 
 before(ready);

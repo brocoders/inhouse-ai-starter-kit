@@ -157,14 +157,21 @@ if [ -n "$shared" ]; then
 	else
 		say "curl openssl ss — present; nothing installed on a shared machine"
 	fi
+	if command -v restic >/dev/null 2>&1; then
+		say "restic — present, so off-site backups can be set up (docs/backups.md)"
+	else
+		say "restic is not installed; off-site backups need it (apt-get install restic)"
+	fi
 else
 	export DEBIAN_FRONTEND=noninteractive
 	apt-get update -qq
 	# --no-install-recommends keeps this to what is named and nothing suggested.
+	# restic is for the off-site copy of the backups; it does nothing until the
+	# owner writes <folder>/.backup.env (docs/backups.md).
 	apt-get install -y -qq --no-install-recommends \
 		ca-certificates curl gnupg openssl ufw unattended-upgrades \
-		apt-listchanges postgresql-client-16 >/dev/null
-	say "ca-certificates curl gnupg openssl ufw unattended-upgrades psql — present"
+		apt-listchanges postgresql-client-16 restic >/dev/null
+	say "ca-certificates curl gnupg openssl ufw unattended-upgrades psql restic — present"
 fi
 
 step "creating the 'deploy' user"
