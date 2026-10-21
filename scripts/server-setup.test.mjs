@@ -234,15 +234,18 @@ describe('server-setup.sh on a shared machine', () => {
 
 describe('server-setup.sh on a fresh machine', () => {
   it('hardens the machine, installs Docker and makes the app’s files', () => {
-    const r = run(['orders', 'orders.example.com'], {
+    // An explicit folder: the default /opt/orders may or may not be writable
+    // on the machine running this test, and the test must not care.
+    const dir = path.join(mkdtempSync(path.join(tmpdir(), 'fresh-')), 'orders');
+    const r = run(['orders', 'orders.example.com', dir], {
       STUB_DOCKER_MISSING: '1',
       STUB_DEPLOY_EXISTS: '0',
       STUB_DEPLOY_GROUPS: 'deploy',
     });
-    // The default folder is /opt/orders, which a test cannot create; the
-    // folder step is where it stops, after every machine-wide step has run.
-    assert.notEqual(r.status, 0);
-    assert.match(r.out, /the application's folders/);
+    assert.equal(r.status, 0, r.out);
+    assert.match(r.out, /The machine is ready/);
+    assert.ok(existsSync(path.join(dir, '.env')));
+    assert.ok(existsSync(path.join(r.sys, 'usr', 'local', 'bin', 'orders-backup')));
     const calls = r.calls.join('\n');
     assert.match(calls, /^apt-get install .*docker-ce/m);
     assert.match(calls, /^adduser --disabled-password/m);
