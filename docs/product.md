@@ -30,7 +30,8 @@ Jobs and reminders, with their time in the app's time zone. A job runs
 either daily at a time or every so many minutes; nothing finer.
 
 - Daily 07:00 — assignees receive a list of their overdue items (example).
-- Every 15 minutes — (the other shape: a check, a mirror, a sender).
+- Every 15 minutes — the health page is read and a problem that has stayed
+  is e-mailed to every owner, once (built in; `health.watch`).
 
 ## Words we use
 

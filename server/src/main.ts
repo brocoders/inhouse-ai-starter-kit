@@ -7,6 +7,7 @@ import { config } from './config.ts';
 import { handle } from './db/index.ts';
 import { migrateDb } from './db/migrate.ts';
 import './jobs/definitions.ts';
+import './jobs/health-watch.ts';
 import { startWorker, type Worker } from './jobs/worker.ts';
 import { log } from './log.ts';
 

@@ -233,7 +233,14 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   targets are enforced by one stylesheet rule on coarse pointers rather
   than by editing the registry's components, which the kit never edits;
   role changes and deactivation ask first, activation does not, because
-  only the irreversible gets a confirmation.
+  only the irreversible gets a confirmation. The outbox sends first and
+  retries only on failure, rather than queuing everything for the worker:
+  a sign-in link must not wait for a tick, and a process with the worker
+  off must still send. A keyed message blocks its key while sent or
+  waiting, not after it gave up, so a problem nobody was told about is
+  told again. The health watch tells owners on the second sighting, a
+  quarter of an hour apart, because the page's own thresholds already
+  filter noise and one more interval costs nothing a person would notice.
 
 ## Open
 

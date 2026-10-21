@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { db, type Db } from '../db/index.ts';
 import type { JobRow } from '../db/schema.ts';
 import { log } from '../log.ts';
+import { retryQueued, type Channel } from '../notify/index.ts';
 import { claim, heartbeat, markDone, markFailed, releaseExpired } from './queue.ts';
 import { dueSchedules } from './schedules.ts';
 
@@ -36,6 +37,8 @@ export type WorkerOptions = {
   /** First retry wait; it doubles on every attempt, up to an hour. */
   backoffMs?: number;
   database?: Db;
+  /** How unsent messages are retried; the e-mail channel unless a test says. */
+  channel?: Channel;
 };
 
 const DEFAULTS = { leaseMs: 5 * 60_000, idleMs: 1_000, backoffMs: 30_000 };
@@ -53,7 +56,7 @@ export function workerHeartbeat(): Date | undefined {
 
 async function run(
   job: JobRow,
-  options: Required<Omit<WorkerOptions, 'database'>>,
+  options: Required<Omit<WorkerOptions, 'database' | 'channel'>>,
   database: Db,
 ): Promise<void> {
   const handler = handlers.get(job.name);
@@ -117,6 +120,9 @@ export async function tick(options: WorkerOptions = {}): Promise<boolean> {
   lastTick = new Date();
   await housekeeping('release expired leases', () => releaseExpired(database));
   await housekeeping('queue due schedules', () => dueSchedules(new Date(), database));
+  await housekeeping('retry unsent messages', () =>
+    retryQueued(new Date(), options.channel, database),
+  );
   const job = await claim(randomUUID(), settings.leaseMs, database);
   if (!job) return false;
   await run(job, settings, database);

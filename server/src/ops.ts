@@ -150,7 +150,7 @@ export async function opsStatus(now: Date = new Date()): Promise<OpsStatus> {
       problems.push({
         code: 'notifications_failed',
         severity: 'error',
-        message: `${failedMail?.count} message(s) could not be sent in the last day. People who were meant to be told were not.`,
+        message: `${failedMail?.count} message(s) could not be sent in the last day, after five tries each. People who were meant to be told were not.`,
         since: null,
         href: null,
       });

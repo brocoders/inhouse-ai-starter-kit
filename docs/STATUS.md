@@ -28,8 +28,8 @@ from the agreed spec `docs/specs/version-0.3.md`, one commit per step.
 Landed so far: (1) the shared-server path — `server-setup.sh --shared`
 and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
 phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
-one home for the history vocabulary. Still to come:
-the notify outbox with owner alerts,
+one home for the history vocabulary; (5) the notify outbox with owner
+alerts. Still to come:
 restic off-site backups, the two-part first-paint budget, CI on a private
 repository, and a home for an app's departures from the kit.
 
@@ -134,3 +134,12 @@ step is one commit with its tests and its documentation.
    `lib/history-text.ts` (tested), never as `[object Object]` or an id.
    Not done: the phone screenshots of people and an item — the session's
    usage allowance ran out before they were taken.
+5. **`notify()` as an outbox, and problems that reach the owner.** A
+   message still goes at once; one that could not be sent keeps its
+   address and text and the worker tries again after one, two, four and
+   eight minutes before the health page counts it as lost. A message with
+   a key is sent once until `resolveNotice(key)`. A job every fifteen
+   minutes reads the health page's own problem list and e-mails every
+   active owner, once, about a problem seen on two runs in a row; nothing
+   on the first run after a start. Migration `0001_notify_outbox`, safe to
+   run twice. Six new tests in `notify.test.ts`.

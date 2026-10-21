@@ -201,22 +201,38 @@ export const jobs = pgTable(
   ],
 );
 
+// An outbox. A message is written down before it is sent; one that could not
+// be sent keeps its address and text here so the worker can try again, and
+// a message with a key is sent once until that key is resolved.
 export const notifications = pgTable(
   'notifications',
   {
     id: text('id').primaryKey(),
     userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
     channel: text('channel').notNull().default('email'),
+    // Where it goes and what it says, kept so a retry has what it needs.
+    address: text('address'),
     subject: text('subject').notNull(),
-    status: text('status', { enum: ['queued', 'sent', 'failed'] })
+    text: text('text').notNull().default(''),
+    html: text('html'),
+    // "Once per problem": while a sent or waiting row with this key has no
+    // resolved_at, another notify() with the same key is skipped.
+    key: text('key'),
+    // queued = waiting for another try; failed = gave up; skipped = not sent
+    // because the key was already told.
+    status: text('status', { enum: ['queued', 'sent', 'failed', 'skipped'] })
       .notNull()
       .default('queued'),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }),
     error: text('error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp('sent_at', { withTimezone: true }),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   },
   (table) => [
     index('notifications_status_created_at_idx').on(table.status, table.createdAt.desc()),
+    index('notifications_key_idx').on(table.key),
   ],
 );
 
