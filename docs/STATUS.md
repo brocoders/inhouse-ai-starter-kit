@@ -35,8 +35,9 @@ reaches the owner, interval jobs, a "More" tab.
 - Hooks were exercised by hand with sample payloads and by their tests, not
   inside a live Claude Code session; the scratch-folder and memory-folder
   allowances in 0.2 are tested the same way.
-- Pushing from this machine needs the owner to run `git push origin main`:
-  Claude Code's auto-mode classifier refuses a push from an agent session.
+- Pushing from an agent session works only with the sandbox off for that
+  one command, because the token lives in `~/.config/inhouse/`, which the
+  sandbox hides; the same token cannot close or comment on pull requests.
 - The three projects' later friction (CI on a private repo, the first-screen
   budget, a tab bar of eight screens, every-N-minutes jobs) is reviewed but
   not fixed; see version 0.3 in the review.
@@ -81,4 +82,6 @@ about a second instead of tens of seconds. Held back: `@types/node` stays
 on 24 although 26 is published, because the image and `.nvmrc` stay on Node
 24 until 26 has run on a real project. Tested: `pnpm check` green before
 and after the TypeScript step, 164 KB on first paint. Nothing deployed; the
-kit has no server. `docs/stack.md` is re-verified as of today.
+kit has no server. `docs/stack.md` is re-verified as of today. On GitHub:
+CI, Docs and Tests all green on merge commit 07e005c, and Dependabot
+closed its three pull requests itself once `main` carried the versions.
