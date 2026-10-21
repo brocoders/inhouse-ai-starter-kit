@@ -11,7 +11,9 @@ against stubbed `ssh` and `docker` only.
 
 ## In progress
 
-Version 0.2 is built on `main`, not yet pushed or tagged. It fixes what
+Version 0.2 is on `main` and on GitHub, tagged `v0.2.0`, with CI, the
+test job against real PostgreSQL and the guides publish all green on the
+merge commit (21 October 2026). It fixes what
 stopped the first release and the first agent session of the three projects
 that used version 0.1 (`docs/reviews/2026-10-21-feedback-review.md`): the
 production image now carries PGlite and the seed script, a blank `.env`
