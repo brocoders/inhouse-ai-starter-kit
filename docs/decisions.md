@@ -249,7 +249,16 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   the start, with the proving restore a documented step rather than a
   gate, because a copy nobody prunes is the one that fills the bucket. An
   off-site failure does not fail the backup or the release that called it:
-  the dump on disk is real, and the stale marker reaches the owner.
+  the dump on disk is real, and the stale marker reaches the owner. The
+  first-screen budget became two numbers instead of a lazy translation
+  split: measured from the built chunks, a first visit downloads 239 KB
+  before any screen (the shell plus what every screen shares), and the
+  heaviest screen adds 15 KB of its own, so the words were never the
+  weight and a split would have added a mechanism every screen must get
+  right for a few kilobytes. 280 KB before any screen is the kit's floor
+  plus room for two ordinary libraries; 60 KB for one screen's own weight
+  is four times the heaviest today, and the checker names the heaviest
+  screen on every run so the day one grows the number says which.
 
 ## Open
 

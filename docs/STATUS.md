@@ -29,8 +29,9 @@ Landed so far: (1) the shared-server path — `server-setup.sh --shared`
 and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
 phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
 one home for the history vocabulary; (5) the notify outbox with owner
-alerts; (6) restic off-site backups. Still to come: the two-part first-paint budget, CI on a private
-repository, and a home for an app's departures from the kit.
+alerts; (6) restic off-site backups; (7) the two-part first-paint budget.
+Still to come: CI on a private repository, and a home for an app's
+departures from the kit.
 
 ## Known problems
 
@@ -153,3 +154,12 @@ step is one commit with its tests and its documentation.
    `scripts/backup.test.mjs` against stubbed docker and restic, including
    that no key reaches the output. `docs/backups.md` has the set-up and
    the proving restore.
+7. **The first-screen budget, in two parts.** The old single number
+   measured the entry's static imports only: 165 KB of a 200 KB budget.
+   Measured honestly, a first visit downloads 239 KB before any screen can
+   render — the shell plus 74 KB that every screen shares and Vite splits
+   out of the shell — and the heaviest screen adds 15 KB of its own.
+   `check-frontend.mjs` now prints and budgets both: 280 KB before any
+   screen, 60 KB for one screen's own weight, and names the heaviest screen
+   every run. No translation split: the dictionary is a few kilobytes and
+   is not where the weight is. Four new checker tests.

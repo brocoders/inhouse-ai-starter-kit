@@ -92,6 +92,19 @@ actions; on a phone or a tablet it is the pull-down gesture in
 `useRefreshSignal()` number, so a screen that fetches in an effect gets the
 same refresh. Do not give a screen a Refresh button of its own.
 
+## Weight
+
+Two budgets, measured from the built chunks by `check-frontend.mjs`, both in
+gzipped kilobytes. **Before any screen** — the shell the entry imports
+statically plus what two or more screens share, which every first visit
+downloads — is 280 KB. **One screen's own** — what a single screen loads that
+no other screen and not the shell does — is 60 KB. The checker prints both
+every run and names the heaviest screen, so the day a screen gets heavy the
+number says which. A screen that is over splits what it loads (`lazy()` for a
+piece used on a tap, as the More sheet does) or loads less of it; a piece
+loaded on demand is outside both budgets, and the chart library must never
+reach the shell. Translations are one file and are not where the weight is.
+
 ## Charts
 
 Recharts, imported only inside `src/components/charts/`, reached only through
