@@ -167,6 +167,18 @@ function readConfig() {
   if (!/^\/[\w.\-/]+$/.test(deploy.dir) || deploy.dir === '/') {
     throw new Refusal(`deploy.dir "${deploy.dir}" does not look like a path under /`);
   }
+  // Who holds ports 80 and 443. "own" is the kit's Caddy, started by the
+  // release; "host" is a web server the machine already had, which proxies to
+  // the app on 127.0.0.1 — the shape for a server that hosts something else.
+  const edge = deploy.edge === undefined ? 'own' : deploy.edge;
+  if (edge !== 'own' && edge !== 'host') {
+    throw new Refusal(
+      `deploy.edge is "${deploy.edge}", not "own" or "host"`,
+      '"own" (the default) starts the kit\'s Caddy; "host" leaves the web server to the\n' +
+        'machine and publishes the app on 127.0.0.1 for it. server-setup.sh --edge host\n' +
+        'is the other half of "host".',
+    );
+  }
   // The facts about the app itself. They live here, in the repository, and the
   // release carries them to the server every time — so the server always says
   // what the repository says, and /setup changing the time zone takes effect on
@@ -195,6 +207,7 @@ function readConfig() {
     host: deploy.host.trim(),
     dir: deploy.dir.trim().replace(/\/$/, ''),
     domain: deploy.domain.trim(),
+    edge,
     // Checked now so a bad value stops the release before anything is sent.
     appEnv: [
       `APP_NAME=${envFileValue('appName', facts.appName)}`,
@@ -219,7 +232,7 @@ try {
   console.error('');
   process.exit(65);
 }
-const { host, dir, domain } = config;
+const { host, dir, domain, edge } = config;
 const releaseDir = `${dir}/releases/${sha}`;
 const remoteArchive = `/tmp/release-${short}.tar.gz`;
 const localArchive = join(tmpdir(), `inhouse-release-${short}.tar.gz`);
@@ -349,9 +362,14 @@ async function remote(script, { allowFailure = false, quiet = false } = {}) {
 // files hold different halves of what compose.yaml needs: .env has the secrets
 // and the server's own name, the per-release file has which commit this is,
 // where its source sits and the facts about the app.
+//
+// With the machine's own web server in front (deploy.edge "host"), a second
+// file is laid over the first: it publishes the app on 127.0.0.1 and nothing
+// else, so compose.yaml stays one file that every server reads the same way.
 function composeCmd(envFile) {
+  const overlay = edge === 'host' ? ` -f ${q(`${releaseDir}/compose.host-edge.yaml`)}` : '';
   return (
-    `docker compose -f ${q(`${releaseDir}/compose.yaml`)} --project-directory ${q(dir)} ` +
+    `docker compose -f ${q(`${releaseDir}/compose.yaml`)}${overlay} --project-directory ${q(dir)} ` +
     `--env-file ${q(`${dir}/.env`)} --env-file ${q(envFile)}`
   );
 }
@@ -850,9 +868,13 @@ async function switchOver() {
   // what is serving, whether or not it answers well, and the next release's
   // ancestor guard has to judge against it.
   switched = true;
-  await remote(`
-umask 077
-printf '%s' ${q(releaseEnvContents)} > ${q(releaseEnv)}
+  // The kit's own Caddy: installed, started on a first release and reloaded
+  // in place when its file changed. With the machine's web server in front
+  // there is no Caddy of ours to touch, and nothing here mentions it.
+  const caddySteps =
+    edge === 'host'
+      ? ''
+      : `
 # The web server reads one Caddyfile at a path that does not change, so that a
 # release never restarts it and never interrupts a certificate renewal. It is
 # reloaded in place, and only when it actually differs.
@@ -862,6 +884,22 @@ if ! cmp -s ${q(`${releaseDir}/Caddyfile`)} ${q(`${dir}/Caddyfile`)} 2>/dev/null
 else
   caddyfile_changed=
 fi
+`;
+  const caddyStart =
+    edge === 'host'
+      ? ''
+      : `
+# Starts the web server on a first release; does nothing on every release after.
+${composeCmd(releaseEnv)} up -d caddy
+if [ -n "$caddyfile_changed" ]; then
+  ${composeCmd(releaseEnv)} exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+  echo "Caddyfile changed and was reloaded"
+fi
+`;
+  await remote(`
+umask 077
+printf '%s' ${q(releaseEnvContents)} > ${q(releaseEnv)}
+${caddySteps}
 # --no-deps so the database is not recreated underneath the app. This is the
 # moment of downtime: the old container stops, the new one starts, and Caddy
 # holds arriving requests for up to five seconds while that happens.
@@ -873,12 +911,7 @@ printf '%s\\n' ${q(sha)} > ${q(`${releaseDir}/RELEASE`)}
 ln -sfn ${q(releaseDir)} ${q(`${dir}/current`)}
 test "$(cat ${q(`${dir}/current/RELEASE`)})" = ${q(sha)}
 echo "recorded ${short} as the live release"
-# Starts the web server on a first release; does nothing on every release after.
-${composeCmd(releaseEnv)} up -d caddy
-if [ -n "$caddyfile_changed" ]; then
-  ${composeCmd(releaseEnv)} exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
-  echo "Caddyfile changed and was reloaded"
-fi
+${caddyStart}
 `);
   log('the new container is running');
   log(`${dir}/current now points at ${short}`);
@@ -1015,7 +1048,9 @@ function printPlan(previous, verdict) {
       : `6.  restore that dump into ${rehearsalDb}, check it holds tables, run the migration against it`,
     `7.  read ${dir}/current/RELEASE again — another release may have gone out meanwhile`,
     `8.  run the migration against the live database`,
-    `9.  write ${releaseEnv}, install the Caddyfile if it changed, start the new app container,`,
+    edge === 'host'
+      ? `9.  write ${releaseEnv}, start the new app container on 127.0.0.1 for the machine's web server,`
+      : `9.  write ${releaseEnv}, install the Caddyfile if it changed, start the new app container,`,
     `    and record it: write ${releaseDir}/RELEASE, point ${dir}/current at it`,
     `10. wait for https://${domain}/health/ready, then confirm it is serving ${short}`,
     `11. keep the newest 5 releases plus the live one, prune dangling images and dumps over 14 days old`,

@@ -141,6 +141,19 @@ _If this went wrong:_ "Permission denied (publickey)" means the provider did not
 put your key on the machine. Most providers let you paste it into the server's
 settings page and rebuild; that is quicker than fixing it any other way.
 
+_If the server already runs something else:_ add `--shared` and name the
+folder; the script then checks the machine instead of changing it and makes
+only this app's files. If that something already answers on the web (ports 80
+and 443), add `--edge host` too, put `"edge": "host"` under `deploy` in
+`inhouse.config.json`, and add the three-line block the script prints to that
+web server's configuration. The app then listens on the machine's own address
+only, and the existing web server passes your domain through to it.
+
+```sh
+ssh root@203.0.113.10 'bash -s' orders orders.example.com /srv/orders \
+  --shared --edge host < deploy/server-setup.sh
+```
+
 ### 4. Fill in the two e-mail lines
 
 The app sends e-mail — sign-in links, invitations. It needs an account with

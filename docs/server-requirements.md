@@ -33,6 +33,29 @@ If the machine runs anything else, never restart or reconfigure it. This project
 owns its three containers, `/opt/<app>`, `/var/backups/<app>` and its own systemd
 timer, and nothing else.
 
+### A machine that already hosts something
+
+Two of the first three projects put their app on a server that was already
+running another one. `deploy/server-setup.sh --shared` is the path for that:
+the folder must be given (there is no default on a shared machine, and
+`deploy.dir` must agree), the machine itself is checked and reported, never
+changed — SSH, the firewall, updates, fail2ban and Docker are read, and a
+missing Docker stops the script instead of being installed — and only this
+app's folder, backup folder, settings file, backup wrapper and timer are
+written. The app's name is the slug on every container and volume, and the
+script refuses a name whose database volume already exists under some other
+folder, which is the one mistake that would put two apps on one database.
+
+When that machine already has a web server on ports 80 and 443, add
+`--edge host` and set `deploy.edge` to `"host"` in `inhouse.config.json`.
+The kit's Caddy is then never started: the release lays
+`compose.host-edge.yaml` over `compose.yaml`, which publishes the app on
+`127.0.0.1:<APP_BIND_PORT>` (3000 unless `--port` said otherwise) and nothing
+wider, and the machine's web server proxies the domain to that port. The
+setup script prints the block to add. With `--edge own` (the default) on a
+shared machine, the script stops when something already holds port 80 or 443,
+because its Caddy could not start.
+
 ## System packages
 
 Installed by `deploy/server-setup.sh` unless the note says otherwise.

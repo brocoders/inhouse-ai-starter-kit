@@ -23,9 +23,13 @@ row is forgotten, the worked example's conflict check is written correctly,
 the app's name, zone and locale reach development from `inhouse.config.json`,
 the release skill describes the script as it is, and the sandbox, guard and
 write hook let a session use `node --run`, its scratch folder and its memory.
-Version 0.3 is the list of mechanisms every app needed and built itself:
-a server that already hosts something, off-site backups, an outbox that
-reaches the owner, interval jobs, a "More" tab.
+Version 0.3 is being built on branch `claude/gracious-brattain-ea8ed9`
+from the agreed spec `docs/specs/version-0.3.md`, one commit per step.
+Landed so far: (1) the shared-server path — `server-setup.sh --shared`
+and `deploy.edge: "host"`. Still to come: interval jobs, the "More" tab,
+the phone pass over the primitives, the notify outbox with owner alerts,
+restic off-site backups, the two-part first-paint budget, CI on a private
+repository, and a home for an app's departures from the kit.
 
 ## Known problems
 
@@ -85,3 +89,20 @@ and after the TypeScript step, 164 KB on first paint. Nothing deployed; the
 kit has no server. `docs/stack.md` is re-verified as of today. On GitHub:
 CI, Docs and Tests all green on merge commit 07e005c, and Dependabot
 closed its three pull requests itself once `main` carried the versions.
+
+## 21 October 2026 — version 0.3, step by step
+
+The owner agreed the spec (`docs/specs/version-0.3.md`): nine mechanisms
+every app had built for itself, in the order the review ranked them. Each
+step is one commit with its tests and its documentation.
+
+1. **A server that already hosts something.** `server-setup.sh --shared`
+   takes an explicit folder, reads the machine (SSH, firewall, updates,
+   Docker) and writes only this app's files; it refuses a name whose
+   database volume already belongs to another folder, and a taken port 80
+   or 443. `--edge host` plus `deploy.edge: "host"` leaves the web server
+   to the machine: the release lays `compose.host-edge.yaml` over
+   `compose.yaml`, the app listens on `127.0.0.1` only, and the kit's Caddy
+   is never started. Proven by `scripts/server-setup.test.mjs`, which runs
+   the whole script against a scratch folder with the machine's commands
+   stubbed — the first time the script has run whole anywhere.

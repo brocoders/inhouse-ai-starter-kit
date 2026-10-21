@@ -214,6 +214,18 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   needed and built itself (shared server, off-site backups, an outbox for
   problems, interval jobs, a "More" tab) are version 0.3, not this one.
 
+- **Version 0.3 (October 2026) builds what every app needed** — the
+  mechanisms section 4 of the same review found two projects had each built
+  for themselves. The spec is `docs/specs/version-0.3.md`. Choices made
+  there: a shared machine gets `server-setup.sh --shared`, which reads the
+  machine and writes only the app's files, and `deploy.edge: "host"`, under
+  which the kit's Caddy is never started and the app is published on
+  `127.0.0.1` for the machine's own web server — a second compose file laid
+  over the first, rather than a conditional inside `compose.yaml`, so the
+  file every server reads stays one file. Stopping on a taken port, rather
+  than warning, because a Caddy that cannot bind fails later and less
+  clearly.
+
 ## Open
 
 - Provider names and step lists for the hosting guide (Hetzner, DigitalOcean,

@@ -129,6 +129,13 @@ It is safe to run again: every step checks first and says "already done" rather
 than doing it twice. If it stops halfway, the agent fixes what it complained
 about and runs the same line again.
 
+If the server already runs something else, tell the agent so. It then runs the
+same command with `--shared`, which checks the machine instead of changing it and
+makes only this app's files — and, when the other thing already answers on the
+web, with `--edge host`, so that the existing web server passes your domain
+through to the app. The script prints the three lines to add to that web
+server.
+
 <Aside type="caution" title="If this went wrong">
   "Permission denied" at the very start means the provider did not put your SSH key on the machine.
   Most providers let you paste the key into the server's settings page and rebuild it; that is

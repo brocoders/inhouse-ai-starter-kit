@@ -12,7 +12,10 @@
     "deploy.host    the SSH alias of your server as it appears in ~/.ssh/config,",
     "               never a raw address — addresses are not committed.",
     "deploy.dir     the folder on that server holding compose.yaml.",
-    "deploy.domain  the domain the app answers on, for Caddy and for release checks."
+    "deploy.domain  the domain the app answers on, for Caddy and for release checks.",
+    "deploy.edge    'own' (default) — the kit's Caddy holds ports 80 and 443.",
+    "               'host' — the server already has a web server; the app listens on",
+    "               127.0.0.1 for it (set up with server-setup.sh --edge host)."
   ],
   "appName": "InHouse",
   "profile": "solo",
