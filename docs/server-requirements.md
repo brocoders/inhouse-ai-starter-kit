@@ -52,9 +52,14 @@ The kit's Caddy is then never started: the release lays
 `compose.host-edge.yaml` over `compose.yaml`, which publishes the app on
 `127.0.0.1:<APP_BIND_PORT>` (3000 unless `--port` said otherwise) and nothing
 wider, and the machine's web server proxies the domain to that port. The
-setup script prints the block to add. With `--edge own` (the default) on a
-shared machine, the script stops when something already holds port 80 or 443,
-because its Caddy could not start.
+setup script prints the block to add. A web server that itself runs in Docker
+cannot reach `127.0.0.1`; for it, `APP_BIND_HOST=172.17.0.1` in the server's
+`.env` publishes the app on the Docker bridge instead, which containers and
+the machine reach and the internet does not. With `--edge own` (the default)
+on a shared machine, the script stops when something already holds port 80 or
+443, because its Caddy could not start. In shared mode the script never
+changes an existing user: a `deploy` that exists but is not in the `docker`
+group stops it with the one command for the machine's owner to run.
 
 ## System packages
 

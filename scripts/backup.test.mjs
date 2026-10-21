@@ -11,6 +11,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,7 +27,8 @@ case "$*" in *pg_dump*) head -c 4096 /dev/zero | tr '\\0' 'x' ;; esac
 exit 0
 `;
 const RESTIC = `#!/bin/bash
-printf 'restic %s\\n' "$*" >>"$STUB_LOG"
+# The password's length only: proof it arrived whole, without printing it.
+printf 'restic %s (password length %s)\\n' "$*" "\${#RESTIC_PASSWORD}" >>"$STUB_LOG"
 # Never print the environment: the test checks that the keys stay out of the log.
 case "$1" in
   cat) [ "\${STUB_REPO_EXISTS:-1}" = 1 ] && exit 0 || exit 1 ;;
@@ -51,7 +53,8 @@ function setup({ offsite = false, restic = true } = {}) {
       path.join(dir, '.backup.env'),
       [
         'RESTIC_REPOSITORY=s3:https://example.invalid/bucket',
-        'RESTIC_PASSWORD=test-password-not-real',
+        // A $ and spaces: a file read as shell would break on both.
+        'RESTIC_PASSWORD=test pass$word not real',
         'AWS_ACCESS_KEY_ID=test-key-id',
         'AWS_SECRET_ACCESS_KEY=test-secret',
         '',
@@ -113,21 +116,23 @@ describe('backup.sh', () => {
     assert.equal(r.status, 0, r.stderr);
     assert.equal(r.last.off_server, true);
     const restic = r.calls.filter((c) => c.startsWith('restic'));
-    assert.match(restic.join('\n'), /^restic cat config$/m);
+    assert.match(restic.join('\n'), /^restic cat config /m);
     assert.match(
       restic.join('\n'),
-      new RegExp(`^restic backup -q --tag orders ${r.last.file} ${env.dir}/.env$`, 'm'),
+      new RegExp(`^restic backup -q --tag orders ${r.last.file} ${env.dir}/.env `, 'm'),
     );
     assert.match(
       restic.join('\n'),
-      /^restic forget -q --tag orders --keep-daily 14 --keep-weekly 8 --keep-monthly 6 --prune$/m,
+      /^restic forget -q --tag orders --group-by host,tags --keep-daily 14 --keep-weekly 8 --keep-monthly 6 --prune/m,
     );
+    assert.match(restic.join('\n'), /password length 23\)/, 'the password arrived whole');
+    assert.equal((statSync(path.join(env.out, '.offsite-last')).mode & 0o777).toString(8), '644');
     const marker = readFileSync(path.join(env.out, '.offsite-last'), 'utf8').trim();
     assert.match(marker, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     // The keys travel in the environment and never through the log or output.
     for (const text of [r.stdout, r.stderr, r.calls.join('\n')]) {
       assert.ok(!text.includes('test-secret'), 'a secret reached the output');
-      assert.ok(!text.includes('test-password-not-real'), 'the password reached the output');
+      assert.ok(!text.includes('pass$word'), 'the password reached the output');
     }
   });
 
@@ -135,7 +140,7 @@ describe('backup.sh', () => {
     const env = setup({ offsite: true });
     const r = run({ ...env, extra: { STUB_REPO_EXISTS: '0' } });
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.calls.join('\n'), /^restic init -q$/m);
+    assert.match(r.calls.join('\n'), /^restic init -q /m);
   });
 
   it('keeps the dump and reports when the off-site copy fails, without failing the backup', () => {

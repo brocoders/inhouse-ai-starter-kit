@@ -195,7 +195,30 @@ describe('server-setup.sh on a shared machine', () => {
       STUB_VOLUMES: 'orders_pgdata other_pgdata',
     });
     assert.equal(r.status, 69, r.out);
-    assert.match(r.out, /already uses the name 'orders'/);
+    assert.match(r.out, /already uses that name/);
+  });
+
+  it('does not put an existing user into the docker group on a shared machine', () => {
+    const dir = path.join(mkdtempSync(path.join(tmpdir(), 'shared-')), 'orders');
+    const r = run(['orders', 'orders.example.com', dir, '--shared', '--edge', 'host'], {
+      STUB_DEPLOY_GROUPS: 'deploy',
+    });
+    assert.equal(r.status, 69, r.out);
+    assert.match(r.out, /usermod -aG docker deploy/);
+    assert.ok(!r.calls.some((c) => c.startsWith('usermod')), 'usermod was run');
+  });
+
+  it('refuses a bind port that something already holds', () => {
+    const dir = path.join(mkdtempSync(path.join(tmpdir(), 'shared-')), 'orders');
+    const r = run(
+      ['orders', 'orders.example.com', dir, '--shared', '--edge', 'host', '--port', '3000'],
+      {
+        STUB_PORTS: ':443 :3000',
+      },
+    );
+    assert.equal(r.status, 69, r.out);
+    assert.match(r.out, /port 3000 is already taken/);
+    assert.match(r.out, /--port <a free one>/);
   });
 
   it('stops when Docker is missing rather than installing it', () => {

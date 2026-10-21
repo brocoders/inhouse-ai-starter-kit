@@ -125,24 +125,39 @@ if [ -f "$offsite_env" ]; then
 	if ! command -v restic >/dev/null 2>&1; then
 		echo '{"event":"backup_offsite_skipped","reason":"restic is not installed"}' >&2
 	else
-		# The four lines of the file become restic's environment for this
-		# process only. Nothing below prints them, and nothing may.
-		set -a
-		# shellcheck disable=SC1090
-		. "$offsite_env"
-		set +a
+		# The lines of the file become restic's environment for this process
+		# only. Read as KEY=VALUE text, never run as shell: a password holding
+		# a $ or a space would otherwise break the run and print part of itself.
+		# Only the names restic and S3 need are taken; nothing below prints them.
+		while IFS= read -r line || [ -n "$line" ]; do
+			case $line in '' | '#'*) continue ;; esac
+			key=${line%%=*}
+			value=${line#*=}
+			case $key in
+			RESTIC_REPOSITORY | RESTIC_PASSWORD | AWS_ACCESS_KEY_ID | AWS_SECRET_ACCESS_KEY | AWS_DEFAULT_REGION)
+				export "$key=$value"
+				;;
+			esac
+		done <"$offsite_env"
 		if [ -z "${RESTIC_REPOSITORY:-}" ] || [ -z "${RESTIC_PASSWORD:-}" ]; then
 			echo '{"event":"backup_offsite_skipped","reason":"RESTIC_REPOSITORY or RESTIC_PASSWORD missing in .backup.env"}' >&2
 		elif
 			# Make the repository on first use; ask quietly whether it exists.
+			# forget groups by host and tag: every dump has a new name, so the
+			# default grouping by path would make each copy a group of one and
+			# keep them all for ever.
 			{ restic cat config >/dev/null 2>&1 || restic init -q >/dev/null; } &&
 				restic backup -q --tag "$app" "$final" "$dir/.env" >/dev/null &&
-				restic forget -q --tag "$app" --keep-daily 14 --keep-weekly 8 --keep-monthly 6 --prune >/dev/null
+				restic forget -q --tag "$app" --group-by host,tags \
+					--keep-daily 14 --keep-weekly 8 --keep-monthly 6 --prune >/dev/null
 		then
 			off_server=true
 			# When the last copy left: a dot-file, so it is not mistaken for a
-			# dump, written whole so a reader never sees half a date.
+			# dump, written whole so a reader never sees half a date, and
+			# readable by everyone (it holds a date, nothing else) because the
+			# app reads it as its own user, not as deploy.
 			printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$out/.offsite-last.partial"
+			chmod 644 "$out/.offsite-last.partial"
 			mv "$out/.offsite-last.partial" "$out/.offsite-last"
 		else
 			echo '{"event":"backup_offsite_failed","reason":"restic did not finish; see its output above"}' >&2

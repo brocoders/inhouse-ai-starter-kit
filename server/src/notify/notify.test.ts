@@ -248,6 +248,43 @@ describe('problems that reach the owner', () => {
     assert.equal((await sentSubjects()).length, 4);
   });
 
+  it('tells again about a problem that cleared while the app was restarting', async () => {
+    resetHealthWatch();
+    const owner = await makeUser('owner', { email: 'one@example.com' });
+    await watchHealth([problem('backup_stale')]);
+    assert.deepEqual(await watchHealth([problem('backup_stale')]), ['backup_stale']);
+    assert.equal((await sentSubjects()).length, 1);
+    // The app restarts; by its first run the problem is gone. The key must
+    // still be closed, or the next occurrence is never told.
+    resetHealthWatch();
+    assert.deepEqual(await watchHealth([]), []);
+    const open = (await db.select().from(notifications)).filter(
+      (row) => row.userId === owner.id && row.resolvedAt === null,
+    );
+    assert.equal(open.length, 0, 'the key was closed on the first run after the restart');
+    await watchHealth([problem('backup_stale')]);
+    assert.deepEqual(await watchHealth([problem('backup_stale')]), ['backup_stale']);
+    assert.equal((await sentSubjects()).length, 2);
+  });
+
+  it('keeps two failing jobs apart: one being told does not hide the other', async () => {
+    resetHealthWatch();
+    await makeUser('owner', { email: 'one@example.com' });
+    await watchHealth([problem('jobs_failed:items.due-reminder')]);
+    await watchHealth([
+      problem('jobs_failed:items.due-reminder'),
+      problem('jobs_failed:health.watch'),
+    ]);
+    assert.deepEqual(
+      await watchHealth([
+        problem('jobs_failed:items.due-reminder'),
+        problem('jobs_failed:health.watch'),
+      ]),
+      ['jobs_failed:health.watch'],
+    );
+    assert.equal((await sentSubjects()).length, 2);
+  });
+
   it('is on the clock every quarter of an hour', async () => {
     await import('../jobs/health-watch.ts');
     const { registeredSchedules } = await import('../jobs/schedules.ts');

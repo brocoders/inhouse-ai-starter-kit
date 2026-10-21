@@ -7,10 +7,10 @@
 // first run after a start, so a restart does not cry wolf. When a problem
 // goes away its key is resolved, so the next time it happens it is told
 // again — and the owner is not told again while it merely continues.
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNull, like } from 'drizzle-orm';
 import { config } from '../config.ts';
 import { db, type Db } from '../db/index.ts';
-import { user } from '../db/schema.ts';
+import { notifications, user } from '../db/schema.ts';
 import { notify, resolveNotice } from '../notify/index.ts';
 import type { Problem } from '../../../shared/schemas.ts';
 import { schedule } from './schedules.ts';
@@ -37,17 +37,31 @@ export async function watchHealth(problems: Problem[], database: Db = db): Promi
   const current = new Set(problems.map((problem) => problem.code));
   const seenBefore = previous;
   previous = current;
+
+  // Every open key whose problem is not here now is closed — read from the
+  // database, not from memory, and on every run including the first, so a
+  // problem that cleared while the app was restarting is still told again
+  // the next time it happens.
+  const open = await database
+    .selectDistinct({ key: notifications.key })
+    .from(notifications)
+    .where(
+      and(
+        like(notifications.key, `${HEALTH_KEY}:%`),
+        isNull(notifications.resolvedAt),
+        inArray(notifications.status, ['sent', 'queued']),
+      ),
+    );
+  for (const row of open) {
+    const code = row.key?.split(':').slice(1, -1).join(':');
+    if (row.key && code && !current.has(code)) await resolveNotice(row.key, database);
+  }
   if (seenBefore === null) return [];
 
   const owners = await database
     .select({ id: user.id })
     .from(user)
     .where(and(eq(user.role, 'owner'), eq(user.active, true)));
-
-  for (const code of seenBefore) {
-    if (current.has(code)) continue;
-    for (const owner of owners) await resolveNotice(keyFor(code, owner.id), database);
-  }
 
   const told: string[] = [];
   for (const problem of problems) {

@@ -123,6 +123,11 @@ if [ "$edge" = host ]; then
 	if [ -z "$(listener_on 443)" ]; then
 		say "WARNING: nothing is listening on 443 yet; whatever will has to proxy to the app"
 	fi
+	if [ -n "$(listener_on "$port")" ] && [ ! -f "$dir/.env" ]; then
+		say "port $port is already taken: $(listener_on "$port")"
+		say "Two apps on one machine each default to 3000. Run again with --port <a free one>."
+		exit 69
+	fi
 else
 	for p in 80 443; do
 		if [ -n "$(listener_on "$p")" ] && [ ! -f "$dir/.env" ]; then
@@ -139,10 +144,11 @@ fi
 # not. Starting a second app on top of the first's database is the one mistake
 # this script must never make.
 if command -v docker >/dev/null 2>&1 && [ ! -f "$dir/.env" ] &&
-	docker volume ls -q 2>/dev/null | grep -qx "${app}_pgdata"; then
-	say "a Docker volume named ${app}_pgdata already exists, but $dir has no settings file."
-	say "Another app on this machine already uses the name '$app'. Choose a different"
-	say "app name, or give the folder that app was set up in."
+	{ docker volume ls -q 2>/dev/null | grep -qx "${app}_pgdata" ||
+		docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${app}-"; }; then
+	say "a Docker volume or container named for '$app' already exists, but $dir has no"
+	say "settings file. Another app on this machine already uses that name. Choose a"
+	say "different app name, or give the folder that app was set up in."
 	exit 69
 fi
 
@@ -179,7 +185,9 @@ step "creating the 'deploy' user"
 # docker group, which is root-equivalent on any machine: a member can start a
 # container that mounts the whole filesystem. Treat its SSH key exactly as you
 # would treat root's.
+deploy_was_here=
 if id -u deploy >/dev/null 2>&1; then
+	deploy_was_here=1
 	say "already done — the user exists"
 else
 	adduser --disabled-password --gecos '' deploy >/dev/null
@@ -324,6 +332,13 @@ else
 fi
 if id -nG deploy | tr ' ' '\n' | grep -qx docker; then
 	say "deploy is already in the docker group"
+elif [ -n "$shared" ] && [ -n "$deploy_was_here" ]; then
+	# Somebody else's user on somebody else's machine. The docker group is
+	# root-equivalent; granting it is theirs to do, knowingly.
+	say "deploy exists but is not in the docker group, and a shared machine's users"
+	say "are not changed from here. Releases need it: run 'usermod -aG docker deploy'"
+	say "yourself (it is root-equivalent — see above), then run this again."
+	exit 69
 else
 	usermod -aG docker deploy
 	say "deploy added to the docker group (which is root-equivalent — see above)"
@@ -504,9 +519,12 @@ if [ "$edge" = host ]; then
 	      }
 
 	  For nginx, the equivalent server block with proxy_pass http://127.0.0.1:$port
-	  and the certificate it already manages. A proxy that itself runs in Docker
-	  reaches the app at the host's bridge address (172.17.0.1 by default)
-	  instead of 127.0.0.1. Reload it, then release.
+	  and the certificate it already manages. Reload it, then release.
+
+	  If that web server itself runs in Docker, it cannot reach 127.0.0.1 on the
+	  machine. Add APP_BIND_HOST=172.17.0.1 (the Docker bridge address, reachable
+	  from containers and from the machine, not from the internet) to $env_file
+	  and point the proxy at 172.17.0.1:$port instead.
 
 	EDGE
 fi

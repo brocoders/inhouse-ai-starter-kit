@@ -23,7 +23,9 @@ beforeEach(async () => {
   config.worker = false;
 });
 
-const codes = async (): Promise<string[]> => (await opsStatus()).problems.map((p) => p.code);
+// The code before the colon: a failing job's code names the job after it.
+const codes = async (): Promise<string[]> =>
+  (await opsStatus()).problems.map((p) => p.code.split(':')[0] ?? p.code);
 
 describe('when everything is fine', () => {
   it('reports no problems at all', async () => {

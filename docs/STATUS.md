@@ -144,15 +144,24 @@ step is one commit with its tests and its documentation.
    a key is sent once until `resolveNotice(key)`. A job every fifteen
    minutes reads the health page's own problem list and e-mails every
    active owner, once, about a problem seen on two runs in a row; nothing
-   on the first run after a start. Migration `0001_notify_outbox`, safe to
+   on the first run after a start. The key is per owner
+   (`health:<code>:<owner>`, not the spec's `health:<code>`, so two owners
+   are both told), a failing job's code names the job so one being told
+   does not hide another, and open keys are closed from the database on
+   every run, so a problem that cleared during a restart is told again
+   next time. Migration `0001_notify_outbox`, safe to
    run twice. Six new tests in `notify.test.ts`.
 6. **Off-site backups, built in.** When `/opt/<app>/.backup.env` exists
    (four lines the owner writes by hand: the bucket, two S3 keys, the
    restic password), `backup.sh` sends the new dump and the server's
    `.env` to any S3-compatible bucket through restic and keeps 14 daily,
    8 weekly and 6 monthly copies; a failure there is reported and never
-   fails the dump. A dot-file marker in the backup folder tells the health
-   page when the last copy left; older than two days is a warning, which
+   fails the dump. The key file is read as `KEY=VALUE` text, never run as
+   shell, so a password with a `$` or a space is fine and never printed;
+   restic's copies are grouped by host and tag, since every dump has a new
+   name and the default grouping would keep them all for ever. A dot-file
+   marker in the backup folder, readable by the app's own user, tells the
+   health page when the last copy left; older than two days is a warning, which
    `health.watch` mails. `server-setup.sh` installs restic. Proven by
    `scripts/backup.test.mjs` against stubbed docker and restic, including
    that no key reaches the output. `docs/backups.md` has the set-up and

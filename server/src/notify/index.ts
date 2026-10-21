@@ -53,11 +53,6 @@ async function trySend(
       text: row.text,
       html: row.html ?? undefined,
     });
-    await database
-      .update(notifications)
-      .set({ status: 'sent', sentAt: now, attempts, nextAttemptAt: null, error: null })
-      .where(eq(notifications.id, row.id));
-    return 'sent';
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const exhausted = attempts >= MAX_ATTEMPTS;
@@ -79,6 +74,13 @@ async function trySend(
     );
     return exhausted ? 'failed' : 'queued';
   }
+  // Outside the catch: a database hiccup after a successful send must not
+  // read as a failed send and have the message go out twice.
+  await database
+    .update(notifications)
+    .set({ status: 'sent', sentAt: now, attempts, nextAttemptAt: null, error: null })
+    .where(eq(notifications.id, row.id));
+  return 'sent';
 }
 
 export async function notify(
@@ -134,7 +136,14 @@ export async function notify(
     return { id, status: 'failed' };
   }
 
-  await database.insert(notifications).values({ ...base, status: 'queued' });
+  // Written with a retry time before the first try, so a process that dies
+  // mid-send leaves a message the worker picks up in a minute rather than
+  // one that is never sent and, with a key, blocks that key for ever.
+  await database.insert(notifications).values({
+    ...base,
+    status: 'queued',
+    nextAttemptAt: new Date(now.getTime() + retryWait(1)),
+  });
   const status = await trySend({ ...base, attempts: 0 }, channel, database, now);
   return { id, status };
 }

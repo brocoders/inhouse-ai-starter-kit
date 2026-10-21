@@ -269,7 +269,12 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   `localeCompare` follows the machine and CI and a laptop disagreed. An
   app's departures from the kit's rules are a list in `docs/product.md`,
   not flags in the rules themselves: one page every session already reads,
-  one line per exception, and the rules stay general.
+  one line per exception, and the rules stay general. A review of the
+  whole branch before the merge found the off-site section reading the
+  owner's key file as shell (a password with a `$` broke the run and
+  printed part of itself) and restic keeping every copy for ever under its
+  default grouping; both were fixed before anything was merged, which is
+  what the solo profile's "review" step is for.
 
 ## Open
 

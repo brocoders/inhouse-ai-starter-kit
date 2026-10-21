@@ -139,7 +139,7 @@ export async function opsStatus(now: Date = new Date()): Promise<OpsStatus> {
   for (const summary of jobSummaries) {
     if (summary.failed24h > 0) {
       problems.push({
-        code: 'jobs_failed',
+        code: `jobs_failed:${summary.name}`,
         severity: 'error',
         message: `Background work called "${summary.name}" failed ${summary.failed24h} time(s) in the last day and has given up. Whatever it does has not been done.`,
         since: summary.lastFailedAt,
@@ -155,7 +155,7 @@ export async function opsStatus(now: Date = new Date()): Promise<OpsStatus> {
       .where(sql`${schedules.nextRunAt} < ${new Date(now.getTime() - SCHEDULE_LATE_MS)}`);
     for (const row of late) {
       problems.push({
-        code: 'schedule_missed',
+        code: `schedule_missed:${row.name}`,
         severity: 'warning',
         message: `The regular job "${row.name}" was due more than two hours ago and has not run. It usually means the app was restarted or the worker is turned off.`,
         since: row.nextRunAt.toISOString(),
@@ -171,7 +171,7 @@ export async function opsStatus(now: Date = new Date()): Promise<OpsStatus> {
       problems.push({
         code: 'notifications_failed',
         severity: 'error',
-        message: `${failedMail?.count} message(s) could not be sent in the last day, after five tries each. People who were meant to be told were not.`,
+        message: `${failedMail?.count} message(s) could not be sent in the last day — after five tries, or because there was no address. People who were meant to be told were not.`,
         since: null,
         href: null,
       });
