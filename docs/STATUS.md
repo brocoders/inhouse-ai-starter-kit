@@ -31,8 +31,8 @@ phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
 one home for the history vocabulary; (5) the notify outbox with owner
 alerts; (6) restic off-site backups; (7) the two-part first-paint budget;
 (8) CI on a private repository and a no-CI mode; (9) a home for an app's
-departures from the kit. All nine steps are on the branch; what is left is
-the merge, the push and CI green on GitHub.
+departures from the kit. The review's section 4 table says what shipped
+for each row. What is left is the merge, the push and CI green on GitHub.
 
 ## Known problems
 
@@ -133,8 +133,10 @@ step is one commit with its tests and its documentation.
    `shared/audit.ts`, read by the column, the contract, the server and the
    history list; a value with no better name is written by
    `lib/history-text.ts` (tested), never as `[object Object]` or an id.
-   Not done: the phone screenshots of people and an item — the session's
-   usage allowance ran out before they were taken.
+   Looked at in the preview at phone width: the role change and the
+   deactivation ask first, and every button measures 44 px — including a
+   button that opens a dialog, which carries the trigger's slot name and
+   was 28 px until the rule named those too.
 5. **`notify()` as an outbox, and problems that reach the owner.** A
    message still goes at once; one that could not be sent keeps its
    address and text and the worker tries again after one, two, four and
