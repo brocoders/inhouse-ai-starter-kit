@@ -227,7 +227,9 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   clearly. Interval jobs count from the moment the last run was queued, not
   from the top of the hour, and are capped at a day: anything slower is a
   daily job, and alignment to the clock is what piles every job on every
-  machine onto the same minute.
+  machine onto the same minute. The tab bar keeps five tabs and folds the
+  rest under More from the sixth screen — four plus More, not five plus
+  More, because More is a tab too and six do not fit a thumb.
 
 ## Open
 

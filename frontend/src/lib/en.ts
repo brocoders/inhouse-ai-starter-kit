@@ -17,6 +17,7 @@ export const en = {
   'nav.health': 'Health',
   'nav.account': 'Account',
   'nav.primary': 'Primary',
+  'nav.more': 'More',
 
   'action.save': 'Save',
   'action.saving': 'Saving…',

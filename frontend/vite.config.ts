@@ -40,11 +40,14 @@ export default defineConfig({
     // The API is same-origin in production — Better Auth's cookies are
     // same-origin only — so development has to look the same to the browser.
     // Vite serves the screens and passes everything the server owns through.
+    // The server listens on PORT (3000 unless .env or .claude/launch.json says
+    // otherwise); reading the same variable here keeps the two in step when a
+    // second checkout on the same machine has to use another port.
     proxy: {
-      '/api': { target: 'http://127.0.0.1:3000', changeOrigin: false },
+      '/api': { target: `http://127.0.0.1:${process.env.PORT ?? 3000}`, changeOrigin: false },
       // The server's probes; the app's own status screen lives at /system so the
       // two never collide.
-      '/health': { target: 'http://127.0.0.1:3000', changeOrigin: false },
+      '/health': { target: `http://127.0.0.1:${process.env.PORT ?? 3000}`, changeOrigin: false },
     },
   },
   plugins: [

@@ -107,7 +107,9 @@ Design at 390 px first. Tables become card rows under 640 px. Detail views are
 their own page, or a bottom drawer on the phone — not a popup. No horizontal
 page scroll, ever; long text truncates with a `title` attribute. The tab bar
 pads itself out of the home bar with `env(safe-area-inset-bottom)`, and page
-content leaves `pb-24` for it.
+content leaves `pb-24` for it. Up to five screens are five tabs; from six, the
+first four in `components/shell/navigation.ts` are tabs and the fifth is
+**More**, a bottom sheet with the rest — reorder that list to choose which four.
 
 ## Forms
 

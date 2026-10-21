@@ -26,8 +26,8 @@ write hook let a session use `node --run`, its scratch folder and its memory.
 Version 0.3 is being built on branch `claude/gracious-brattain-ea8ed9`
 from the agreed spec `docs/specs/version-0.3.md`, one commit per step.
 Landed so far: (1) the shared-server path — `server-setup.sh --shared`
-and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules. Still to
-come: the "More" tab,
+and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
+phone tab bar with "More". Still to come:
 the phone pass over the primitives, the notify outbox with owner alerts,
 restic off-site backups, the two-part first-paint budget, CI on a private
 repository, and a home for an app's departures from the kit.
@@ -112,3 +112,12 @@ step is one commit with its tests and its documentation.
    seen, run once when due, the next counted from then, so an hour of
    downtime gives one run, not four. Whole minutes from 1 to 1440. Six new
    tests in `schedules.test.ts`.
+3. **The phone tab bar with "More".** Up to five screens are five tabs;
+   from six, the first four are tabs and the fifth opens a bottom sheet
+   with the rest, lit while one of them is showing. The split is a pure
+   function with its own test; looked at in the preview at phone width
+   with two extra screens added for the occasion. The sheet's code loads
+   on the first tap, not with the shell: with it eager the first paint
+   grew from 164 to 183 KB, lazy it is 165. In passing, the dev proxy now
+   follows `PORT`, so a second checkout on the same machine can run on
+   another port.
