@@ -64,3 +64,21 @@ and adds `docs/kit-feedback.md` with the `release` skill asking for a line
 at the end of every release, because the one project that kept such a file
 wrote thirty-three lines on its first day and none afterwards. `pnpm check`
 green; nothing released, since the kit itself has no server.
+
+## 21 October 2026 — dependencies brought up to date from Dependabot
+
+The three open Dependabot pull requests (#7, #5 and #2) were applied as one
+reviewed change rather than merged one by one. Twenty-four packages moved a
+minor or patch step. The one that matters is Better Auth, pinned exactly,
+from 1.7.5 to 1.7.10: 1.7.7 closed a magic-link account takeover, and every
+app on this kit signs people in by magic link. No database migration was
+needed and the sign-in rate-limit tests still pass. `cn` 0.3 → 0.5 only
+raises its Node floor to 22. GitHub's `setup-node` action moved to 7.1.0.
+TypeScript moved from 5.9 to 7.0.2, the native compiler, because the full
+check passed with the one configuration change its release notes require
+(the frontend `tsconfig` no longer sets `baseUrl`); the typecheck now takes
+about a second instead of tens of seconds. Held back: `@types/node` stays
+on 24 although 26 is published, because the image and `.nvmrc` stay on Node
+24 until 26 has run on a real project. Tested: `pnpm check` green before
+and after the TypeScript step, 164 KB on first paint. Nothing deployed; the
+kit has no server. `docs/stack.md` is re-verified as of today.

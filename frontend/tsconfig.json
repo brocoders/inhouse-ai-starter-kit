@@ -8,7 +8,6 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "types": ["vite/client", "vite-plugin-pwa/react"],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@server/*": ["../server/src/*"],
