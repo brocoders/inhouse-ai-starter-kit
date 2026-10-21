@@ -120,7 +120,10 @@ an XY chart. Where an XY chart stays: no Y axis, at most five X ticks, height
 
 ## Phone
 
-Design at 390 px first. Tables become card rows under 640 px. Detail views are
+Design at 390 px first, unless `docs/product.md` lists the screen under "Where
+this app departs from the kit" — a data-heavy screen may be desktop first, and
+that list is where the choice is recorded so the next session sees it. Tables
+become card rows under 640 px. Detail views are
 their own page, or a bottom drawer on the phone — not a popup. No horizontal
 page scroll, ever; long text truncates with a `title` attribute. The tab bar
 pads itself out of the home bar with `env(safe-area-inset-bottom)`, and page

@@ -30,8 +30,9 @@ and `deploy.edge: "host"`; (2) `{ everyMinutes }` schedules; (3) the
 phone tab bar with "More"; (4) the phone pass: 44 px targets, confirmations,
 one home for the history vocabulary; (5) the notify outbox with owner
 alerts; (6) restic off-site backups; (7) the two-part first-paint budget;
-(8) CI on a private repository and a no-CI mode. Still to come: a home for
-an app's departures from the kit.
+(8) CI on a private repository and a no-CI mode; (9) a home for an app's
+departures from the kit. All nine steps are on the branch; what is left is
+the merge, the push and CI green on GitHub.
 
 ## Known problems
 
@@ -172,3 +173,9 @@ step is one commit with its tests and its documentation.
    secret to `pnpm install` for an app with a private package; the sorts
    that followed the machine's locale name one. `docs/running.md` has the
    section. Not verified on GitHub until the branch is pushed.
+9. **Where an app departs from the kit.** `docs/product.md` has a section
+   for it — one line per override, the rule, the reason — with "desktop
+   first for this screen" as the example; the frontend rule, the design
+   system's Phone section and `AGENTS.md` point at it. A departure written
+   there holds; one written in a spec or a handover was forgotten by the
+   next session on the first real project.

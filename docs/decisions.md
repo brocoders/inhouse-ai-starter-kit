@@ -266,7 +266,10 @@ breaks · Costs and subscriptions · Recipes · Glossary.
   is four times the heaviest today, and the checker names the heaviest
   screen on every run so the day one grows the number says which. Sorts in
   the checkers and the log name a locale or compare bytes, because a bare
-  `localeCompare` follows the machine and CI and a laptop disagreed.
+  `localeCompare` follows the machine and CI and a laptop disagreed. An
+  app's departures from the kit's rules are a list in `docs/product.md`,
+  not flags in the rules themselves: one page every session already reads,
+  one line per exception, and the rules stay general.
 
 ## Open
 

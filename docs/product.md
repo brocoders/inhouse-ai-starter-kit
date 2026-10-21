@@ -40,3 +40,14 @@ Terms the people in this business use, so the screens use the same ones.
 ## Not in scope
 
 What this system deliberately does not do, so nobody builds it by accident.
+
+## Where this app departs from the kit
+
+One line per override: the screen or area, the kit rule it sets aside, and
+why. Every session reads this page, so a departure written here holds; one
+written in a spec or a handover is forgotten by the next session. The rules
+themselves stay as they are in `AGENTS.md`, `frontend/DESIGN.md` and
+`.claude/rules/`; this is the list of exceptions.
+
+- Reports: desktop first, not phone first — a thirty-column table is read at
+  a desk, and the phone gets a summary card instead (example).
